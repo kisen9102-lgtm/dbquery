@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DBS 运维管理平台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root {
+      --sidebar-width: 220px;
+      --sidebar-bg: #1a2233;
+      --sidebar-hover: #253047;
+      --sidebar-active: #2563eb;
+      --topbar-height: 56px;
+      --topbar-bg: #fff;
+      --body-bg: #f0f2f5;
+      --card-radius: 10px;
+    }
+    body { background: var(--body-bg); font-size: 14px; }
+
+    /* ── 侧边栏 ── */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      display: flex; flex-direction: column;
+      z-index: 100;
+    }
+    .sidebar-brand {
+      height: var(--topbar-height);
+      display: flex; align-items: center; padding: 0 20px;
+      color: #fff; font-size: 16px; font-weight: 700;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      white-space: nowrap;
+    }
+    .sidebar-brand i { font-size: 22px; margin-right: 10px; color: #60a5fa; }
+    .sidebar-menu { flex: 1; overflow-y: auto; padding: 12px 0; }
+    .menu-label {
+      font-size: 11px; color: #64748b; letter-spacing: .08em;
+      padding: 16px 20px 6px; text-transform: uppercase;
+    }
+    .menu-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px; color: #94a3b8; cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    .menu-item:hover { background: var(--sidebar-hover); color: #e2e8f0; }
+    .menu-item.active {
+      background: var(--sidebar-hover); color: #fff;
+      border-left-color: var(--sidebar-active);
+    }
+    .menu-item i { font-size: 17px; width: 20px; text-align: center; }
+    .sidebar-footer {
+      padding: 14px 20px; font-size: 12px; color: #475569;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    /* ── 顶栏 ── */
+    #topbar {
+      position: fixed; top: 0; left: var(--sidebar-width); right: 0;
+      height: var(--topbar-height);
+      background: var(--topbar-bg);
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      display: flex; align-items: center; padding: 0 24px;
+      z-index: 99;
+    }
+    #page-title { font-size: 16px; font-weight: 600; color: #1e293b; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .badge-env {
+      background: #dcfce7; color: #16a34a;
+      font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500;
+    }
+
+    /* ── 主内容 ── */
+    #main {
+      margin-left: var(--sidebar-width);
+      margin-top: var(--topbar-height);
+      padding: 28px 28px 40px;
+      min-height: calc(100vh - var(--topbar-height));
+    }
+
+    /* ── 卡片 ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card { border: none; border-radius: var(--card-radius); box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .card-header { background: #fff; border-bottom: 1px solid #f1f5f9; border-radius: var(--card-radius) var(--card-radius) 0 0 !important; font-weight: 600; padding: 16px 20px; }
+    .stat-card {
+      border-radius: var(--card-radius); padding: 22px 24px;
+      display: flex; align-items: center; gap: 18px; color: #fff;
+    }
+    .stat-card i { font-size: 36px; opacity: .85; }
+    .stat-card .stat-val { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-card .stat-label { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+    /* ── 表单 ── */
+    .form-label { font-weight: 500; color: #374151; }
+    .result-box {
+      background: #0f172a; color: #e2e8f0; border-radius: 8px;
+      padding: 16px; font-family: monospace; font-size: 13px;
+      white-space: pre-wrap; word-break: break-all;
+      max-height: 400px; overflow-y: auto;
+      display: none;
+    }
+    .result-box.show { display: block; }
+    .result-box.error { color: #fca5a5; }
+    .result-box.success { color: #86efac; }
+
+    /* ── 表格 ── */
+    .table th { background: #f8fafc; font-weight: 600; font-size: 13px; color: #475569; border-top: none; }
+    .table td { vertical-align: middle; }
+
+    /* ── tag ── */
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .tag-ok { background: #dcfce7; color: #16a34a; }
+    .tag-warn { background: #fef9c3; color: #854d0e; }
+    .tag-err { background: #fee2e2; color: #b91c1c; }
+
+    /* ── 数据库列表弹窗 ── */
+    .db-list-table td { vertical-align: middle; padding: 8px 16px; }
+    .db-list-table tr:hover td { background: #eff6ff; }
+    .db-list-table tr { cursor: default; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin .8s linear infinite; }
+  </style>
+</head>
+<body>
+
+<!-- ══ 侧边栏 ══ -->
+<div id="sidebar">
+  <div class="sidebar-brand">
+    <i class="bi bi-database-fill"></i>DBS 运维平台
+  </div>
+  <div class="sidebar-menu">
+    <div class="menu-label">概览</div>
+    <div class="menu-item active" data-panel="dashboard">
+      <i class="bi bi-speedometer2"></i>控制台
+    </div>
+
+    <div class="menu-label">数据库</div>
+    <div class="menu-item" data-panel="db-search">
+      <i class="bi bi-search"></i>数据库查询
+    </div>
+    <div class="menu-item" data-panel="instances">
+      <i class="bi bi-server"></i>实例管理
+    </div>
+    <div class="menu-item" onclick="openSqlEditorDirect()">
+      <i class="bi bi-terminal"></i>SQL 查询
+    </div>
+
+    <div class="menu-label nonquery-menu" style="display:none">集群</div>
+    <div class="menu-item nonquery-menu" data-panel="cluster-query" style="display:none">
+      <i class="bi bi-diagram-3"></i>拓扑角色查询
+    </div>
+
+
+    <div class="menu-label admin-menu" style="display:none">系统管理</div>
+    <div class="menu-item admin-menu" data-panel="users" style="display:none">
+      <i class="bi bi-people"></i>用户管理
+    </div>
+    <div class="menu-item admin-menu" data-panel="groups" style="display:none">
+      <i class="bi bi-collection"></i>用户组管理
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <i class="bi bi-circle-fill text-success me-1" style="font-size:9px"></i>
+    服务运行中 · 端口 8000
+  </div>
+</div>
+
+<!-- ══ 顶栏 ══ -->
+<div id="topbar">
+  <span id="page-title">控制台</span>
+  <div class="topbar-right">
+    <span class="badge-env">测试环境</span>
+    <span class="text-muted" style="font-size:13px">
+      <i class="bi bi-clock me-1"></i><span id="clock"></span>
+    </span>
+    <span id="user-badge" style="font-size:13px;display:none">
+      <i class="bi bi-person-circle me-1 text-primary"></i>
+      <span id="user-name" class="fw-500"></span>
+      <span id="user-role-badge" class="ms-1" style="font-size:11px;padding:2px 7px;border-radius:10px"></span>
+    </span>
+    <a href="/accounts/logout/" class="btn btn-sm btn-outline-secondary ms-1" style="font-size:12px">
+      <i class="bi bi-box-arrow-right me-1"></i>退出
+    </a>
+  </div>
+</div>
+
+<!-- ══ 主内容 ══ -->
+<div id="main">
+
+  <!-- ── 控制台 ── -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2563eb,#1d4ed8)">
+          <i class="bi bi-database"></i>
+          <div>
+            <div class="stat-val" id="stat-db-count">-</div>
+            <div class="stat-label">业务数据库数</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#16a34a,#15803d)">
+          <i class="bi bi-activity"></i>
+          <div>
+            <div class="stat-val">运行中</div>
+            <div class="stat-label">Django 服务状态</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#d97706,#b45309)">
+          <i class="bi bi-server"></i>
+          <div>
+            <div class="stat-val">8.0.45</div>
+            <div class="stat-label">MySQL 版本</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
+          <i class="bi bi-shield-check"></i>
+          <div>
+            <div class="stat-val">已修复</div>
+            <div class="stat-label">SQL 注入 / 注入风险</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6 admin-only-inst" style="display:none">
+        <div class="card">
+          <div class="card-header">快速查询 — 本地数据库列表</div>
+          <div class="card-body">
+            <button class="btn btn-primary btn-sm" onclick="quickQueryDB()">
+              <i class="bi bi-play-fill me-1"></i>立即查询
+            </button>
+            <div class="result-box mt-3" id="dash-db-result"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">接口清单</div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+              <thead><tr><th>接口</th><th>方法</th><th>鉴权</th></tr></thead>
+              <tbody>
+                <tr><td>/databases/</td><td><span class="tag tag-ok">GET</span></td><td>无</td></tr>
+                <tr><td>/clusters/query_arch/</td><td><span class="tag tag-ok">GET</span></td><td>IP 白名单</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ── 数据库查询 ── -->
+  <div class="panel" id="panel-db-search">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-search me-2"></i>数据库查询</div>
+      <div class="card-body">
+        <div class="row g-3 mb-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">数据库名称</label>
+            <input type="text" class="form-control" id="dbs-name" placeholder="input database name">
+          </div>
+          <div class="col-auto d-flex align-items-end pb-1 text-muted admin-only-inst" style="display:none;font-size:13px">或</div>
+          <div class="col-md-3 admin-only-inst" style="display:none">
+            <label class="form-label">实例 IP</label>
+            <input type="text" class="form-control" id="dbs-ip" placeholder="例：192.168.1.10">
+          </div>
+          <div class="col-md-2 admin-only-inst" style="display:none">
+            <label class="form-label">端口</label>
+            <input type="number" class="form-control" id="dbs-port" placeholder="3306">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="searchDatabases()">
+              <i class="bi bi-search me-1"></i>查询
+            </button>
+          </div>
+        </div>
+        <div id="dbs-loading" style="display:none" class="text-muted small mb-2">
+          <i class="bi bi-arrow-repeat spin me-1"></i>正在查询各实例，请稍候…
+        </div>
+        <div id="dbs-result-wrap" style="display:none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="text-muted small">共找到 <strong id="dbs-result-count">0</strong> 条记录</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>实例名</th>
+                  <th>实例ID</th>
+                  <th>环境</th>
+                  <th>数据库名</th>
+                  <th>表数量</th>
+                  <th>大小 (MB)</th>
+                </tr>
+              </thead>
+              <tbody id="dbs-result-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="dbs-empty" class="text-muted small" style="display:none">未找到匹配的数据库。</div>
+        <div id="dbs-error" class="alert alert-danger py-2 small" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 集群拓扑角色查询 ── -->
+  <div class="panel" id="panel-cluster-query">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i>集群拓扑角色查询</div>
+      <div class="card-body">
+        <div class="row g-3 mb-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">MySQL IP</label>
+            <input type="text" class="form-control" id="cq-ip" value="127.0.0.1">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">端口</label>
+            <input type="number" class="form-control" id="cq-port" value="3306">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="queryArch()">
+              <i class="bi bi-search me-1"></i>查询
+            </button>
+          </div>
+        </div>
+        <div class="result-box" id="cq-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 实例管理 ── -->
+  <div class="panel" id="panel-instances">
+    <div class="card mb-3 admin-only-inst" style="display:none">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>添加实例</div>
+      <div class="card-body">
+        <div class="alert alert-info py-2 small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。
+        </div>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label">实例名</label>
+            <input type="text" class="form-control" id="inst-remark" placeholder="生产主库">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">IP 地址</label>
+            <input type="text" class="form-control" id="inst-add-ip" placeholder="127.0.0.1">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">端口</label>
+            <input type="number" class="form-control" id="inst-add-port" value="3306">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">环境</label>
+            <select class="form-select" id="inst-add-env">
+              <option value="test">测试</option>
+              <option value="prod">生产</option>
+              <option value="dev">开发</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="addInstance()">
+              <i class="bi bi-plus-lg me-1"></i>添加
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header d-flex align-items-center">
+        <i class="bi bi-server me-2"></i>实例列表
+        <span class="ms-2 text-muted" style="font-size:13px" id="inst-count"></span>
+        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="refreshInstances()">
+          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0" id="inst-table">
+          <thead>
+            <tr>
+              <th>实例名</th><th>实例ID</th><th>端口</th><th>环境</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="inst-tbody">
+            <tr><td colspan="6" class="text-center text-muted py-4">暂无实例，请先添加</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 用户管理 ── -->
+  <div class="panel" id="panel-users">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-person-plus me-2"></i>添加用户</div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label">用户名</label>
+            <input type="text" class="form-control" id="add-user-name" placeholder="请输入用户名">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">密码</label>
+            <input type="password" class="form-control" id="add-user-pass" placeholder="至少 6 位">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">角色</label>
+            <select class="form-select" id="add-user-role">
+              <option value="query">查询用户 (query)</option>
+              <option value="admin">管理员 (admin)</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="addUser()">
+              <i class="bi bi-plus-lg me-1"></i>添加
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header d-flex align-items-center">
+        <i class="bi bi-people me-2"></i>用户列表
+        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="loadUsers()">
+          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>#</th><th>用户名</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 用户组管理 ── -->
+  <div class="panel" id="panel-groups">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>新建用户组</div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label">组名</label>
+            <input type="text" class="form-control" id="grp-name" placeholder="例：prod-team">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">描述</label>
+            <input type="text" class="form-control" id="grp-desc" placeholder="可选">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-primary w-100" onclick="createGroup()">
+              <i class="bi bi-plus-lg me-1"></i>创建
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header d-flex align-items-center">
+        <i class="bi bi-collection me-2"></i>用户组列表
+        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="loadGroups()">
+          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div id="groups-container" class="p-3">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══ 数据库列表模态框 ══ -->
+<div class="modal fade" id="dbListModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-database me-2 text-primary"></i>
+          数据库列表 — <span id="dblm-host" class="text-muted" style="font-size:14px;font-weight:400"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <!-- 搜索框 -->
+        <div class="p-3 border-bottom">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="dblm-search"
+              placeholder="过滤数据库名..." oninput="filterDbList()">
+          </div>
+        </div>
+        <!-- 加载状态 / 列表 -->
+        <div id="dblm-body" style="min-height:120px;max-height:480px;overflow-y:auto">
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-arrow-clockwise spin" style="font-size:24px"></i>
+            <div class="mt-2">加载中...</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <span class="text-muted small" id="dblm-count"></span>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 编辑实例模态框 ══ -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>编辑实例</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-id">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">实例名</label>
+            <input type="text" class="form-control" id="edit-remark" placeholder="生产主库">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">环境</label>
+            <select class="form-select" id="edit-env">
+              <option value="test">测试</option>
+              <option value="prod">生产</option>
+              <option value="dev">开发</option>
+            </select>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">IP 地址</label>
+            <input type="text" class="form-control" id="edit-ip" placeholder="127.0.0.1">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">端口</label>
+            <input type="number" class="form-control" id="edit-port">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveEdit()">
+          <i class="bi bi-check-lg me-1"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 用户编辑模态框 ══ -->
+<div class="modal fade" id="userEditModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>编辑用户</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-user-id">
+        <div class="mb-3">
+          <label class="form-label">用户名</label>
+          <input type="text" class="form-control" id="edit-user-name">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">角色</label>
+          <select class="form-select" id="edit-user-role">
+            <option value="query">查询用户 (query)</option>
+            <option value="admin">管理员 (admin)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">新密码 <span class="text-muted small">（留空不修改）</span></label>
+          <input type="password" class="form-control" id="edit-user-pass" placeholder="至少 6 位">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveUserEdit()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 用户组详情模态框 ══ -->
+<div class="modal fade" id="groupModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-collection me-2"></i>用户组详情：<span id="gm-name"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="gm-id">
+        <div class="row g-4">
+          <!-- 实例列表 -->
+          <div class="col-md-6">
+            <h6 class="fw-600 mb-2"><i class="bi bi-server me-1 text-primary"></i>实例列表</h6>
+            <div class="input-group mb-2">
+              <select class="form-select form-select-sm" id="gm-inst-select">
+                <option value="">-- 选择实例 --</option>
+              </select>
+              <button class="btn btn-sm btn-primary" onclick="addGroupInstance()">添加</button>
+            </div>
+            <div class="input-group mb-2">
+              <span class="input-group-text" style="font-size:12px">按实例ID</span>
+              <input type="number" class="form-control form-control-sm" id="gm-inst-id-input" placeholder="例：10001">
+              <button class="btn btn-sm btn-outline-primary" onclick="addGroupInstanceById()">添加</button>
+            </div>
+            <table class="table table-sm">
+              <thead><tr><th>实例名</th><th>实例ID</th><th>IP</th><th>端口</th><th></th></tr></thead>
+              <tbody id="gm-inst-tbody"></tbody>
+            </table>
+          </div>
+          <!-- 成员列表 -->
+          <div class="col-md-6">
+            <h6 class="fw-600 mb-2"><i class="bi bi-people me-1 text-success"></i>成员列表</h6>
+            <div class="input-group mb-2">
+              <select class="form-select form-select-sm" id="gm-member-select">
+                <option value="">-- 选择用户 --</option>
+              </select>
+              <button class="btn btn-sm btn-success" onclick="addGroupMember()">添加</button>
+            </div>
+            <table class="table table-sm">
+              <thead><tr><th>用户名</th><th></th></tr></thead>
+              <tbody id="gm-member-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ══ CSRF ══
+function getCsrf() {
+  return document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+// ══ 当前用户 ══
+let _currentUser = null;
+
+async function initAuth() {
+  try {
+    const r = await fetch('/accounts/api/me/', {credentials: 'same-origin'});
+    if (r.status === 401 || r.status === 403) { location.href = '/accounts/login/'; return; }
+    _currentUser = await r.json();
+
+    document.getElementById('user-name').textContent = _currentUser.username;
+    const roleBadge = document.getElementById('user-role-badge');
+    if (_currentUser.role === 'root') {
+      roleBadge.textContent = 'root'; roleBadge.style.background = '#fee2e2'; roleBadge.style.color = '#b91c1c';
+    } else if (_currentUser.role === 'admin') {
+      roleBadge.textContent = 'admin'; roleBadge.style.background = '#fef9c3'; roleBadge.style.color = '#854d0e';
+    } else {
+      roleBadge.textContent = 'query'; roleBadge.style.background = '#dcfce7'; roleBadge.style.color = '#16a34a';
+    }
+    document.getElementById('user-badge').style.display = '';
+
+    if (_currentUser.is_admin_or_root) {
+      document.querySelectorAll('.admin-menu').forEach(el => el.style.display = '');
+      document.querySelectorAll('.admin-only-inst').forEach(el => el.style.display = '');
+      document.querySelectorAll('.nonquery-menu').forEach(el => el.style.display = '');
+    }
+    // 用户信息加载完后从 API 拉取实例列表并渲染（确保按钮按角色正确显示）
+    await refreshInstances();
+  } catch(e) { console.error('initAuth', e); }
+}
+
+// ══ 导航切换 ══
+const panelTitles = {
+  'dashboard': '控制台',
+  'instances': '实例管理',
+  'cluster-query': '集群拓扑角色查询',
+  'users': '用户管理',
+  'groups': '用户组管理',
+};
+
+document.querySelectorAll('.menu-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const panel = item.dataset.panel;
+    document.getElementById('panel-' + panel).classList.add('active');
+    document.getElementById('page-title').textContent = panelTitles[panel] || '';
+  });
+});
+
+// ══ 时钟 ══
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN');
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ══ 工具函数 ══
+function showResult(elId, data, isError) {
+  const el = document.getElementById(elId);
+  el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  el.className = 'result-box show' + (isError ? ' error' : ' success');
+}
+
+async function apiGet(url) {
+  const r = await fetch(url, {credentials: 'same-origin'});
+  return r.json();
+}
+
+async function apiPost(url, body) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+async function apiPut(url, body) {
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+async function apiDelete(url, body) {
+  const r = await fetch(url, {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+    credentials: 'same-origin',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 204) return {};
+  return r.json();
+}
+
+// ══ 控制台快速查询 ══
+async function quickQueryDB() {
+  try {
+    const data = await apiGet('/databases/?ip=127.0.0.1&port=3306');
+    document.getElementById('stat-db-count').textContent = data.db_names ? data.db_names.length : '-';
+    showResult('dash-db-result', data, data.error);
+  } catch(e) { showResult('dash-db-result', e.message, true); }
+}
+quickQueryDB();
+
+
+// ══ 数据库查询 ══
+const _SYSTEM_DBS = new Set([
+  'information_schema', 'performance_schema', 'mysql', 'sys', 'test',
+  'checksum', 'dba_backup', 'backup_dba', 'percona',
+  '#mysql50#lost found', '#mysql50#lost+found',
+]);
+
+async function searchDatabases() {
+  const dbName = document.getElementById('dbs-name').value.trim();
+  const ip     = document.getElementById('dbs-ip').value.trim();
+  const port   = document.getElementById('dbs-port').value.trim();
+
+  if (!dbName && !(ip && port)) {
+    alert('请输入数据库名称');
+    return;
+  }
+
+  if (dbName && !_currentUser.is_admin_or_root && _SYSTEM_DBS.has(dbName.toLowerCase())) {
+    document.getElementById('dbs-error').textContent = `禁止查询系统库：${dbName}`;
+    document.getElementById('dbs-error').style.display = '';
+    document.getElementById('dbs-result-wrap').style.display = 'none';
+    document.getElementById('dbs-empty').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('dbs-loading').style.display = '';
+  document.getElementById('dbs-result-wrap').style.display = 'none';
+  document.getElementById('dbs-empty').style.display = 'none';
+  document.getElementById('dbs-error').style.display = 'none';
+
+  try {
+    const params = new URLSearchParams();
+    if (dbName) params.set('db_name', dbName);
+    if (ip)     params.set('ip', ip);
+    if (port)   params.set('port', port);
+
+    const data = await apiGet('/databases/search/?' + params.toString());
+    document.getElementById('dbs-loading').style.display = 'none';
+
+    if (data.error) {
+      document.getElementById('dbs-error').textContent = data.message;
+      document.getElementById('dbs-error').style.display = '';
+      return;
+    }
+
+    const results = data.results || [];
+    document.getElementById('dbs-result-count').textContent = results.length;
+
+    if (results.length === 0) {
+      document.getElementById('dbs-empty').style.display = '';
+      return;
+    }
+
+    const tbody = document.getElementById('dbs-result-body');
+    tbody.innerHTML = '';
+    for (const r of results) {
+      const envTag = r.env === 'prod'
+        ? '<span class="tag tag-err">生产</span>'
+        : '<span class="tag tag-ok">测试</span>';
+      const errCell = r.error
+        ? `<td colspan="2" class="text-danger small">${r.error}</td>`
+        : `<td>${r.table_count}</td><td>${r.size_mb}</td>`;
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${r.remark || '-'}</td>
+          <td class="text-muted">${r.id ? r.id + 10000 : '-'}</td>
+          <td>${envTag}</td>
+          <td><strong>${r.db_name}</strong></td>
+          ${errCell}
+        </tr>`);
+    }
+    document.getElementById('dbs-result-wrap').style.display = '';
+  } catch(e) {
+    document.getElementById('dbs-loading').style.display = 'none';
+    document.getElementById('dbs-error').textContent = e.message;
+    document.getElementById('dbs-error').style.display = '';
+  }
+}
+
+// ══ 基础信息 ══
+// ══ 集群拓扑角色查询 ══
+async function queryArch() {
+  const ip   = document.getElementById('cq-ip').value.trim();
+  const port = document.getElementById('cq-port').value.trim();
+  const box  = document.getElementById('cq-result');
+  box.style.display = 'block';
+  box.className = 'result-box';
+  box.innerHTML = '<span class="text-muted">查询中...</span>';
+  try {
+    const data = await apiGet(`/clusters/query_arch/?ip=${ip}&port=${port}`);
+    if (data.error) {
+      box.className = 'result-box result-error';
+      box.textContent = data.message;
+      return;
+    }
+    box.className = 'result-box result-ok';
+    box.innerHTML = renderTopology(ip, port, data.nodes);
+  } catch(e) {
+    box.className = 'result-box result-error';
+    box.textContent = e.message;
+  }
+}
+
+function renderTopology(ip, port, nodes) {
+  if (!nodes || !nodes.length) return '<span class="text-muted">无数据</span>';
+  const n = nodes[0];
+  const roleBadge = {
+    master:     '<span class="badge bg-danger">主库 Master</span>',
+    slave:      '<span class="badge bg-primary">从库 Slave</span>',
+    standalone: '<span class="badge bg-secondary">独立节点</span>',
+  }[n.role] || '';
+  const statusBadge = n.status === 1
+    ? '<span class="badge bg-success">正常</span>'
+    : '<span class="badge bg-warning text-dark">异常</span>';
+  const roSwitch = n.read_only
+    ? '<span class="badge bg-secondary">只读</span>'
+    : '<span class="badge bg-success">读写</span>';
+
+  let html = `
+    <table class="table table-sm mb-3" style="max-width:600px">
+      <tbody>
+        <tr><th style="width:130px">节点</th><td><code>${ip}:${port}</code></td></tr>
+        <tr><th>角色</th><td>${roleBadge}</td></tr>
+        <tr><th>状态</th><td>${statusBadge} ${n.comment ? `<span class="text-danger small">${n.comment}</span>` : ''}</td></tr>
+        <tr><th>读写模式</th><td>${roSwitch}</td></tr>
+        <tr><th>Server ID</th><td>${n.server_id ?? '-'}</td></tr>
+        <tr><th>MySQL 版本</th><td>${n.version || '-'}</td></tr>
+        <tr><th>GTID 模式</th><td>${n.gtid_mode || '-'}</td></tr>`;
+
+  if (n.role === 'slave') {
+    const ioOk  = n.io_running?.toLowerCase()  === 'yes';
+    const sqlOk = n.sql_running?.toLowerCase() === 'yes';
+    html += `
+        <tr><th>主库地址</th><td><code>${n.master_host}:${n.master_port}</code></td></tr>
+        <tr><th>IO 线程</th><td><span class="badge ${ioOk  ? 'bg-success' : 'bg-danger'}">${n.io_running}</span></td></tr>
+        <tr><th>SQL 线程</th><td><span class="badge ${sqlOk ? 'bg-success' : 'bg-danger'}">${n.sql_running}</span></td></tr>
+        <tr><th>复制延迟</th><td>${n.seconds_behind != null ? n.seconds_behind + ' 秒' : '-'}</td></tr>
+        ${n.last_error ? `<tr><th>错误信息</th><td class="text-danger small">${n.last_error}</td></tr>` : ''}`;
+  }
+
+  if (n.role === 'master' || n.role === 'standalone') {
+    const slaves = n.slaves || [];
+    if (slaves.length) {
+      html += `<tr><th>从库连接</th><td>${slaves.map(s =>
+        `<code>${s.host}</code> <span class="text-muted small">(${s.state || s.command})</span>`
+      ).join('<br>')}</td></tr>`;
+    } else {
+      html += `<tr><th>从库连接</th><td class="text-muted">无从库连接</td></tr>`;
+    }
+  }
+
+  html += '</tbody></table>';
+  return html;
+}
+
+
+// ══ 实例管理（API 后端） ══
+let _instances = [];
+
+async function refreshInstances() {
+  try {
+    _instances = await apiGet('/databases/instances/');
+  } catch(e) {
+    _instances = [];
+  }
+  renderInstances();
+}
+
+async function addInstance() {
+  const remark = document.getElementById('inst-remark').value.trim();
+  const ip     = document.getElementById('inst-add-ip').value.trim();
+  const port   = document.getElementById('inst-add-port').value.trim();
+  const env    = document.getElementById('inst-add-env').value;
+
+  if (!ip || !port) { alert('IP 和端口为必填项'); return; }
+
+  try {
+    const res = await apiPost('/databases/instances/', { remark: remark || ip, ip, port, env });
+    if (res.error) { alert('添加失败：' + res.error); return; }
+  } catch(e) { alert('请求失败：' + e.message); return; }
+
+  document.getElementById('inst-remark').value   = '';
+  document.getElementById('inst-add-ip').value   = '';
+  document.getElementById('inst-add-port').value = '3306';
+  await refreshInstances();
+}
+
+async function deleteInstance(id) {
+  if (!confirm('确认删除该实例？')) return;
+  try {
+    await apiDelete(`/databases/instances/${id}/`, {});
+  } catch(e) { alert('删除失败：' + e.message); return; }
+  await refreshInstances();
+}
+
+function openEditor(inst, db) {
+  const url = `/sql_editor/?ip=${enc(inst.ip)}&port=${enc(inst.port)}${db ? '&db=' + enc(db) : ''}`;
+  window.open(url, '_blank');
+}
+
+function openSqlEditorDirect() {
+  if (!_instances.length) {
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('.menu-item[data-panel="instances"]').classList.add('active');
+    document.getElementById('panel-instances').classList.add('active');
+    document.getElementById('page-title').textContent = '实例管理';
+    alert('请先在「实例管理」页面添加一个 MySQL 实例，再点击「查询」按钮打开 SQL 编辑器。');
+    return;
+  }
+  openEditor(_instances[0]);
+}
+
+const ENV_BADGE = {
+  prod: '<span class="tag" style="background:#fee2e2;color:#b91c1c">生产</span>',
+  test: '<span class="tag" style="background:#dcfce7;color:#16a34a">测试</span>',
+  dev:  '<span class="tag" style="background:#dbeafe;color:#1d4ed8">开发</span>',
+};
+
+function renderInstances() {
+  const list = _instances;
+  const tbody = document.getElementById('inst-tbody');
+  document.getElementById('inst-count').textContent = `共 ${list.length} 个`;
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">暂无实例，请先添加</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(inst => `
+    <tr>
+      <td><strong>${inst.remark}</strong></td>
+      <td class="text-muted">${inst.id + 10000}</td>
+      <td>${inst.port}</td>
+      <td>${ENV_BADGE[inst.env] || inst.env}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-info me-1" onclick="openDbListModal(${inst.id})">
+          <i class="bi bi-database me-1"></i>数据库查询
+        </button>
+        <button class="btn btn-sm btn-outline-secondary me-1" onclick="testConn(${inst.id})">
+          <i class="bi bi-plug me-1"></i>测试连接
+        </button>
+        ${_currentUser && _currentUser.is_admin_or_root ? `
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${inst.id})">
+          <i class="bi bi-pencil me-1"></i>编辑
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteInstance(${inst.id})">
+          <i class="bi bi-trash"></i>
+        </button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function testConn(id) {
+  const inst = _instances.find(i => i.id === id);
+  if (!inst) return;
+  try {
+    const data = await apiGet(`/databases/?ip=${enc(inst.ip)}&port=${enc(inst.port)}`);
+    if (data.error) { alert('连接失败：' + data.message); }
+    else { alert(`连接成功！找到 ${data.db_names.length} 个业务数据库：\n${data.db_names.join(', ')}`); }
+  } catch(e) { alert('请求失败：' + e.message); }
+}
+
+function enc(s) { return encodeURIComponent(s); }
+function maskIP(ip) {
+  const p = ip.split('.');
+  return p.length === 4 ? p[0] + '.*.*.' + p[3] : ip;
+}
+
+// ══ 数据库列表弹窗 ══
+let _dbListModal = null;
+let _dbListAll   = [];   // 当前弹窗的完整数据库列表
+let _dbListInst  = null; // 当前弹窗对应的实例对象
+
+async function openDbListModal(id) {
+  const inst = _instances.find(i => i.id === id);
+  if (!inst) return;
+  _dbListInst = inst;
+
+  // 显示弹窗（先展示 loading 状态）
+  document.getElementById('dblm-host').textContent = `${inst.remark}（${maskIP(inst.ip)}:${inst.port}）`;
+  document.getElementById('dblm-search').value = '';
+  document.getElementById('dblm-count').textContent = '';
+  document.getElementById('dblm-body').innerHTML = `
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-arrow-clockwise spin" style="font-size:24px"></i>
+      <div class="mt-2">连接中...</div>
+    </div>`;
+
+  if (!_dbListModal) _dbListModal = new bootstrap.Modal(document.getElementById('dbListModal'));
+  _dbListModal.show();
+
+  // 异步加载数据库列表
+  try {
+    const data = await apiGet(`/databases/?ip=${enc(inst.ip)}&port=${enc(inst.port)}`);
+    if (data.error) {
+      document.getElementById('dblm-body').innerHTML = `
+        <div class="text-center py-5">
+          <i class="bi bi-exclamation-circle text-danger" style="font-size:28px"></i>
+          <div class="mt-2 text-danger">${data.message}</div>
+        </div>`;
+      return;
+    }
+    _dbListAll = data.db_names || [];
+    renderDbListModal(_dbListAll);
+  } catch(e) {
+    document.getElementById('dblm-body').innerHTML = `
+      <div class="text-center py-5 text-danger">${e.message}</div>`;
+  }
+}
+
+function renderDbListModal(names) {
+  const count = names.length;
+  document.getElementById('dblm-count').textContent = `共 ${count} 个数据库`;
+  if (!count) {
+    document.getElementById('dblm-body').innerHTML =
+      '<div class="text-center text-muted py-5">该实例暂无业务数据库</div>';
+    return;
+  }
+  document.getElementById('dblm-body').innerHTML = `
+    <table class="table table-hover mb-0 db-list-table">
+      <thead><tr><th style="padding:8px 16px">#</th><th>数据库名</th><th>操作</th></tr></thead>
+      <tbody>
+        ${names.map((n, i) => `
+          <tr>
+            <td class="text-muted">${i + 1}</td>
+            <td><i class="bi bi-database-fill me-2 text-primary"></i><strong>${n}</strong></td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                onclick="openEditorFromDbList('${n}')">
+                <i class="bi bi-terminal me-1"></i>SQL 查询
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function filterDbList() {
+  const kw = document.getElementById('dblm-search').value.trim().toLowerCase();
+  const filtered = kw ? _dbListAll.filter(n => n.toLowerCase().includes(kw)) : _dbListAll;
+  renderDbListModal(filtered);
+}
+
+function openEditorFromDbList(dbName) {
+  if (!_dbListInst) return;
+  openEditor(_dbListInst, dbName);
+}
+
+// ══ 编辑实例 ══
+let _editModal = null;
+
+function openEditModal(id) {
+  const inst = _instances.find(i => i.id === id);
+  if (!inst) return;
+  document.getElementById('edit-id').value     = inst.id;
+  document.getElementById('edit-remark').value = inst.remark;
+  document.getElementById('edit-ip').value     = inst.ip;
+  document.getElementById('edit-port').value   = inst.port;
+  document.getElementById('edit-env').value    = inst.env || 'test';
+  if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('editModal'));
+  _editModal.show();
+}
+
+async function saveEdit() {
+  const id     = parseInt(document.getElementById('edit-id').value);
+  const remark = document.getElementById('edit-remark').value.trim();
+  const ip     = document.getElementById('edit-ip').value.trim();
+  const port   = document.getElementById('edit-port').value.trim();
+  const env    = document.getElementById('edit-env').value;
+
+  if (!ip || !port) { alert('IP 和端口为必填项'); return; }
+
+  try {
+    const res = await apiPut(`/databases/instances/${id}/`, { remark: remark || ip, ip, port, env });
+    if (res.error) { alert('保存失败：' + res.error); return; }
+  } catch(e) { alert('请求失败：' + e.message); return; }
+
+  _editModal.hide();
+  await refreshInstances();
+}
+
+// 实例列表由 initAuth() 完成后调用 refreshInstances() 加载
+
+// ══ 用户管理 ══
+const ROLE_LABELS = {root: 'root', admin: '管理员', query: '查询用户'};
+const ROLE_STYLE = {
+  root:  'background:#fee2e2;color:#b91c1c',
+  admin: 'background:#fef9c3;color:#854d0e',
+  query: 'background:#dcfce7;color:#16a34a',
+};
+
+let _allUsers  = [];
+
+async function addUser() {
+  const username = document.getElementById('add-user-name').value.trim();
+  const password = document.getElementById('add-user-pass').value;
+  const role     = document.getElementById('add-user-role').value;
+  if (!username || !password) { alert('用户名和密码不能为空'); return; }
+  try {
+    const data = await apiPost('/accounts/api/users/', {username, password, role});
+    if (data.error) { alert(data.message); return; }
+    document.getElementById('add-user-name').value = '';
+    document.getElementById('add-user-pass').value = '';
+    loadUsers();
+  } catch(e) { alert(e.message); }
+}
+
+async function loadUsers() {
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">加载中...</td></tr>';
+  try {
+    const data = await apiGet('/accounts/api/users/');
+    if (data.error) { tbody.innerHTML = `<tr><td colspan="5" class="text-danger py-3 text-center">${data.message}</td></tr>`; return; }
+    _allUsers = data.users;
+    tbody.innerHTML = data.users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td><strong>${u.username}</strong></td>
+        <td><span class="tag" style="${ROLE_STYLE[u.role]||''}">${ROLE_LABELS[u.role]||u.role}</span></td>
+        <td class="text-muted">${u.date_joined}</td>
+        <td>
+          ${u.role !== 'root' ? `
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="openUserEditModal(${u.id},'${u.username}','${u.role}')">
+              <i class="bi bi-pencil me-1"></i>编辑
+            </button>
+            ${_currentUser && _currentUser.role === 'root' ? `
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id},'${u.username}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            ` : ''}
+          ` : '<span class="text-muted small">超级用户</span>'}
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="5" class="text-danger py-3 text-center">${e.message}</td></tr>`; }
+}
+
+let _userEditModal = null;
+
+function openUserEditModal(id, username, role) {
+  document.getElementById('edit-user-id').value    = id;
+  document.getElementById('edit-user-name').value  = username;
+  document.getElementById('edit-user-role').value  = role;
+  document.getElementById('edit-user-pass').value  = '';
+  if (!_userEditModal) _userEditModal = new bootstrap.Modal(document.getElementById('userEditModal'));
+  _userEditModal.show();
+}
+
+async function saveUserEdit() {
+  const id       = document.getElementById('edit-user-id').value;
+  const username = document.getElementById('edit-user-name').value.trim();
+  const role     = document.getElementById('edit-user-role').value;
+  const password = document.getElementById('edit-user-pass').value;
+  if (!username) { alert('用户名不能为空'); return; }
+  const body = {username, role};
+  if (password) body.password = password;
+  try {
+    const data = await apiPut(`/accounts/api/users/${id}/`, body);
+    if (data.error) { alert(data.message); return; }
+    _userEditModal.hide();
+    loadUsers();
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`确认删除用户 ${username}？`)) return;
+  try {
+    const data = await apiDelete(`/accounts/api/users/${id}/`);
+    if (data.error) { alert(data.message); return; }
+    loadUsers();
+  } catch(e) { alert(e.message); }
+}
+
+// ══ 用户组管理 ══
+let _groupModal  = null;
+let _currentGrpId = null;
+
+async function loadGroups() {
+  const container = document.getElementById('groups-container');
+  container.innerHTML = '<div class="text-muted">加载中...</div>';
+  try {
+    const data = await apiGet('/accounts/api/groups/');
+    if (data.error) { container.innerHTML = `<div class="text-danger">${data.message}</div>`; return; }
+    if (!data.groups.length) { container.innerHTML = '<div class="text-muted">暂无用户组</div>'; return; }
+    container.innerHTML = data.groups.map(g => `
+      <div class="card mb-3">
+        <div class="card-body py-3">
+          <div class="d-flex align-items-center mb-2">
+            <strong><i class="bi bi-collection me-1 text-primary"></i>${g.name}</strong>
+            <span class="text-muted ms-2 small">${g.description || ''}</span>
+            <span class="ms-auto">
+              <span class="badge bg-light text-dark border me-1">
+                <i class="bi bi-server me-1"></i>${g.instances.length} 实例
+              </span>
+              <span class="badge bg-light text-dark border me-2">
+                <i class="bi bi-people me-1"></i>${g.members.length} 成员
+              </span>
+              <button class="btn btn-sm btn-outline-primary me-1" onclick="openGroupModal(${g.id})">
+                <i class="bi bi-pencil me-1"></i>管理
+              </button>
+              ${_currentUser && _currentUser.role === 'root' ? `
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id},'${g.name}')">
+                  <i class="bi bi-trash"></i>
+                </button>
+              ` : ''}
+            </span>
+          </div>
+          <div class="small text-muted">
+            <strong>实例：</strong>
+            ${g.instances.map(i => `<code class="me-2">${i.ip}:${i.port}</code>`).join('') || '（空）'}
+          </div>
+          <div class="small text-muted mt-1">
+            <strong>成员：</strong>
+            ${g.members.map(m => `<span class="me-2">${m.username}</span>`).join('') || '（空）'}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { container.innerHTML = `<div class="text-danger">${e.message}</div>`; }
+}
+
+async function createGroup() {
+  const name = document.getElementById('grp-name').value.trim();
+  const desc = document.getElementById('grp-desc').value.trim();
+  if (!name) { alert('请填写组名'); return; }
+  try {
+    const data = await apiPost('/accounts/api/groups/', {name, description: desc});
+    if (data.error) { alert(data.message); return; }
+    document.getElementById('grp-name').value = '';
+    document.getElementById('grp-desc').value = '';
+    loadGroups();
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteGroup(id, name) {
+  if (!confirm(`确认删除用户组 ${name}？`)) return;
+  try {
+    const data = await apiDelete(`/accounts/api/groups/${id}/`);
+    if (data.error) { alert(data.message); return; }
+    loadGroups();
+  } catch(e) { alert(e.message); }
+}
+
+// ── 用户组详情模态框 ──
+
+function _renderInstSelect(groupInstances) {
+  const added = new Set(groupInstances.map(i => `${i.ip}:${i.port}`));
+  const sel = document.getElementById('gm-inst-select');
+  sel.innerHTML = '<option value="">-- 选择实例 --</option>' +
+    _instances.filter(r => !added.has(`${r.ip}:${r.port}`)).map(r =>
+      `<option value="${r.ip}:${r.port}">${r.remark}（${r.ip}:${r.port}）</option>`
+    ).join('');
+}
+
+async function openGroupModal(groupId) {
+  _currentGrpId = groupId;
+  try {
+    const data = await apiGet('/accounts/api/groups/');
+    const g = data.groups.find(x => x.id === groupId);
+    if (!g) return;
+    document.getElementById('gm-id').value = groupId;
+    document.getElementById('gm-name').textContent = g.name;
+    renderGmInstances(g.instances);
+    renderGmMembers(g.members);
+    _renderInstSelect(g.instances);
+
+    // 填充用户下拉（排除已在组中的）
+    const sel = document.getElementById('gm-member-select');
+    const memberIds = new Set(g.members.map(m => m.id));
+    const usersData = _allUsers.length ? _allUsers : (await apiGet('/accounts/api/users/')).users;
+    sel.innerHTML = '<option value="">-- 选择用户 --</option>' +
+      usersData.filter(u => !memberIds.has(u.id)).map(u =>
+        `<option value="${u.id}">${u.username} (${u.role})</option>`
+      ).join('');
+
+    if (!_groupModal) _groupModal = new bootstrap.Modal(document.getElementById('groupModal'));
+    _groupModal.show();
+  } catch(e) { alert(e.message); }
+}
+
+function renderGmInstances(instances) {
+  const tbody = document.getElementById('gm-inst-tbody');
+  tbody.innerHTML = instances.length
+    ? instances.map(i => {
+        const reg = _instances.find(r => r.ip === i.ip && String(r.port) === String(i.port));
+        const remark = reg ? reg.remark : '-';
+        const instId = reg ? reg.id + 10000 : '-';
+        return `
+        <tr>
+          <td>${remark}</td>
+          <td class="text-muted">${instId}</td>
+          <td><code>${i.ip}</code></td>
+          <td>${i.port}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger py-0 px-1"
+              onclick="removeGroupInstance('${i.ip}',${i.port})">
+              <i class="bi bi-x"></i>
+            </button>
+          </td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="4" class="text-muted text-center">暂无实例</td></tr>';
+}
+
+function renderGmMembers(members) {
+  const tbody = document.getElementById('gm-member-tbody');
+  tbody.innerHTML = members.length
+    ? members.map(m => `
+        <tr>
+          <td>${m.username}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger py-0 px-1"
+              onclick="removeGroupMember(${m.id})">
+              <i class="bi bi-x"></i>
+            </button>
+          </td>
+        </tr>
+      `).join('')
+    : '<tr><td colspan="2" class="text-muted text-center">暂无成员</td></tr>';
+}
+
+async function addGroupInstance() {
+  const val = document.getElementById('gm-inst-select').value;
+  if (!val) { alert('请选择实例'); return; }
+  const [ip, port] = val.split(':');
+  try {
+    const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/instances/`, {ip, port: parseInt(port)});
+    if (data.error) { alert(data.message); return; }
+    document.getElementById('gm-inst-select').value = '';
+    await refreshGroupModal();
+  } catch(e) { alert(e.message); }
+}
+
+async function addGroupInstanceById() {
+  const raw = document.getElementById('gm-inst-id-input').value.trim();
+  if (!raw) { alert('请输入实例ID'); return; }
+  const displayId = parseInt(raw);
+  const inst = _instances.find(r => r.id + 10000 === displayId);
+  if (!inst) { alert(`未找到实例ID：${displayId}`); return; }
+  try {
+    const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/instances/`, {ip: inst.ip, port: inst.port});
+    if (data.error) { alert(data.message); return; }
+    document.getElementById('gm-inst-id-input').value = '';
+    await refreshGroupModal();
+  } catch(e) { alert(e.message); }
+}
+
+async function removeGroupInstance(ip, port) {
+  try {
+    const data = await apiDelete(`/accounts/api/groups/${_currentGrpId}/instances/`, {ip, port});
+    if (data.error) { alert(data.message); return; }
+    await refreshGroupModal();
+  } catch(e) { alert(e.message); }
+}
+
+async function addGroupMember() {
+  const userId = document.getElementById('gm-member-select').value;
+  if (!userId) { alert('请选择用户'); return; }
+  try {
+    const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/members/`, {user_id: parseInt(userId)});
+    if (data.error) { alert(data.message); return; }
+    await refreshGroupModal();
+  } catch(e) { alert(e.message); }
+}
+
+async function removeGroupMember(userId) {
+  try {
+    const data = await apiDelete(`/accounts/api/groups/${_currentGrpId}/members/${userId}/`);
+    if (data.error) { alert(data.message); return; }
+    await refreshGroupModal();
+  } catch(e) { alert(e.message); }
+}
+
+async function refreshGroupModal() {
+  const data = await apiGet('/accounts/api/groups/');
+  const g = data.groups.find(x => x.id === _currentGrpId);
+  if (!g) return;
+  renderGmInstances(g.instances);
+  renderGmMembers(g.members);
+  _renderInstSelect(g.instances);
+  // 刷新用户列表下拉
+  const sel = document.getElementById('gm-member-select');
+  const memberIds = new Set(g.members.map(m => m.id));
+  sel.innerHTML = '<option value="">-- 选择用户 --</option>' +
+    _allUsers.filter(u => !memberIds.has(u.id)).map(u =>
+      `<option value="${u.id}">${u.username} (${u.role})</option>`
+    ).join('');
+  // 刷新组列表
+  loadGroups();
+}
+
+// ══ 面板切换时自动加载 ══
+document.querySelectorAll('.menu-item[data-panel]').forEach(item => {
+  item.addEventListener('click', () => {
+    const panel = item.dataset.panel;
+    if (panel === 'users')  loadUsers();
+    if (panel === 'groups') { loadUsers(); loadGroups(); }
+  });
+});
+
+// ══ 启动 ══
+initAuth();
+</script>
+</body>
+</html>
