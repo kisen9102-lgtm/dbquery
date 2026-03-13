@@ -31,3 +31,6 @@ OPLOG_*.md
 mysql_cluster_setup.md
 API_TEST.md
 .claude/
+
+# Docker 运行时
+.env
