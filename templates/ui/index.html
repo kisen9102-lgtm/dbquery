@@ -237,17 +237,6 @@
     </div>
 
     <div class="row g-3">
-      <div class="col-md-6 admin-only-inst" style="display:none">
-        <div class="card">
-          <div class="card-header" data-i18n="quick_query_title">快速查询 — 本地数据库列表</div>
-          <div class="card-body">
-            <button class="btn btn-primary btn-sm" onclick="quickQueryDB()">
-              <i class="bi bi-play-fill me-1"></i><span data-i18n="query_now">立即查询</span>
-            </button>
-            <div class="result-box mt-3" id="dash-db-result"></div>
-          </div>
-        </div>
-      </div>
       <div class="col-md-6">
         <div class="card">
           <div class="card-header" data-i18n="api_list">接口清单</div>
@@ -369,6 +358,13 @@
             <input type="number" class="form-control" id="inst-add-port" value="3306">
           </div>
           <div class="col-md-2">
+            <label class="form-label" data-i18n="db_type_label">类型</label>
+            <select class="form-select" id="inst-add-dbtype">
+              <option value="mysql">MySQL</option>
+              <option value="tidb">TiDB</option>
+            </select>
+          </div>
+          <div class="col-md-2">
             <label class="form-label" data-i18n="env_label">环境</label>
             <select class="form-select" id="inst-add-env">
               <option value="test" data-i18n="env_test">测试</option>
@@ -376,7 +372,7 @@
               <option value="dev" data-i18n="env_dev">开发</option>
             </select>
           </div>
-          <div class="col-md-2">
+          <div class="col-md-1">
             <button class="btn btn-primary w-100" onclick="addInstance()">
               <i class="bi bi-plus-lg me-1"></i><span data-i18n="add_btn">添加</span>
             </button>
@@ -396,7 +392,7 @@
         <table class="table table-hover mb-0" id="inst-table">
           <thead>
             <tr>
-              <th data-i18n="col_inst_name">实例名</th><th data-i18n="col_inst_id">实例ID</th><th data-i18n="col_port">端口</th><th data-i18n="col_env">环境</th><th data-i18n="col_actions">操作</th>
+              <th data-i18n="col_inst_name">实例名</th><th data-i18n="col_inst_id">实例ID</th><th data-i18n="col_port">端口</th><th data-i18n="col_db_type">类型</th><th data-i18n="col_env">环境</th><th data-i18n="col_actions">操作</th>
             </tr>
           </thead>
           <tbody id="inst-tbody">
@@ -542,7 +538,14 @@
             <label class="form-label" data-i18n="inst_name_label">实例名</label>
             <input type="text" class="form-control" id="edit-remark" placeholder="生产主库">
           </div>
-          <div class="col-md-6">
+          <div class="col-md-3">
+            <label class="form-label" data-i18n="db_type_label">类型</label>
+            <select class="form-select" id="edit-dbtype">
+              <option value="mysql">MySQL</option>
+              <option value="tidb">TiDB</option>
+            </select>
+          </div>
+          <div class="col-md-3">
             <label class="form-label" data-i18n="env_label">环境</label>
             <select class="form-select" id="edit-env">
               <option value="test" data-i18n="env_test">测试</option>
@@ -550,11 +553,11 @@
               <option value="dev" data-i18n="env_dev">开发</option>
             </select>
           </div>
-          <div class="col-md-5">
+          <div class="col-md-4">
             <label class="form-label" data-i18n="ip_label">IP 地址</label>
             <input type="text" class="form-control" id="edit-ip" placeholder="127.0.0.1">
           </div>
-          <div class="col-md-3">
+          <div class="col-md-2">
             <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="edit-port">
           </div>
@@ -670,7 +673,7 @@ const I18N = {
     svc_running:'服务运行中 · 端口 8000', test_env:'测试环境', logout:'退出',
     stat_dbs:'业务数据库数', stat_running:'运行中', stat_django:'Django 服务状态',
     stat_mysql_ver:'MySQL 版本', stat_fixed:'已修复', stat_sql_risk:'SQL 注入 / 注入风险',
-    quick_query_title:'快速查询 — 本地数据库列表', query_now:'立即查询',
+
     api_list:'接口清单', api_endpoint:'接口', api_method:'方法', api_auth:'鉴权',
     api_no_auth:'无', api_ip_wl:'IP 白名单',
     db_search_title:'数据库查询', db_name_label:'数据库名称', or_text:'或',
@@ -685,7 +688,8 @@ const I18N = {
     inst_name_label:'实例名', ip_label:'IP 地址', env_label:'环境',
     env_test:'测试', env_prod:'生产', env_dev:'开发', add_btn:'添加',
     inst_list_title:'实例列表', refresh_btn:'刷新',
-    col_port:'端口', col_actions:'操作',
+    col_port:'端口', col_db_type:'类型', col_actions:'操作',
+    db_type_label:'类型',
     no_instances:'暂无实例，请先添加',
     db_query_btn:'数据库查询', test_conn_btn:'测试连接', edit_btn:'编辑',
     add_user_title:'添加用户', username_label:'用户名', password_label:'密码',
@@ -747,7 +751,7 @@ const I18N = {
     svc_running:'Service running · Port 8000', test_env:'Test Env', logout:'Logout',
     stat_dbs:'Business DBs', stat_running:'Running', stat_django:'Django Status',
     stat_mysql_ver:'MySQL Version', stat_fixed:'Fixed', stat_sql_risk:'SQL Injection Risk',
-    quick_query_title:'Quick Query — Local DB List', query_now:'Query Now',
+
     api_list:'API List', api_endpoint:'Endpoint', api_method:'Method', api_auth:'Auth',
     api_no_auth:'None', api_ip_wl:'IP Whitelist',
     db_search_title:'Database Search', db_name_label:'Database Name', or_text:'or',
@@ -762,7 +766,8 @@ const I18N = {
     inst_name_label:'Instance Name', ip_label:'IP Address', env_label:'Environment',
     env_test:'Test', env_prod:'Prod', env_dev:'Dev', add_btn:'Add',
     inst_list_title:'Instance List', refresh_btn:'Refresh',
-    col_port:'Port', col_actions:'Actions',
+    col_port:'Port', col_db_type:'Type', col_actions:'Actions',
+    db_type_label:'Type',
     no_instances:'No instances yet. Please add one.',
     db_query_btn:'DB Query', test_conn_btn:'Test Conn', edit_btn:'Edit',
     add_user_title:'Add User', username_label:'Username', password_label:'Password',
@@ -951,16 +956,6 @@ async function apiDelete(url, body) {
   return r.json();
 }
 
-// ══ 控制台快速查询 ══
-async function quickQueryDB() {
-  try {
-    const data = await apiGet('/databases/?ip=127.0.0.1&port=3306');
-    document.getElementById('stat-db-count').textContent = data.db_names ? data.db_names.length : '-';
-    showResult('dash-db-result', data, data.error);
-  } catch(e) { showResult('dash-db-result', e.message, true); }
-}
-quickQueryDB();
-
 
 // ══ 数据库查询 ══
 const _SYSTEM_DBS = new Set([
@@ -1131,15 +1126,16 @@ async function refreshInstances() {
 }
 
 async function addInstance() {
-  const remark = document.getElementById('inst-remark').value.trim();
-  const ip     = document.getElementById('inst-add-ip').value.trim();
-  const port   = document.getElementById('inst-add-port').value.trim();
-  const env    = document.getElementById('inst-add-env').value;
+  const remark  = document.getElementById('inst-remark').value.trim();
+  const ip      = document.getElementById('inst-add-ip').value.trim();
+  const port    = document.getElementById('inst-add-port').value.trim();
+  const env     = document.getElementById('inst-add-env').value;
+  const db_type = document.getElementById('inst-add-dbtype').value;
 
   if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
-    const res = await apiPost('/databases/instances/', { remark: remark || ip, ip, port, env });
+    const res = await apiPost('/databases/instances/', { remark: remark || ip, ip, port, env, db_type });
     if (res.error) { alert(t('add_fail') + res.error); return; }
   } catch(e) { alert(t('req_fail') + e.message); return; }
 
@@ -1185,6 +1181,14 @@ function getEnvBadge(env) {
   return map[env] || env;
 }
 
+function getDbTypeBadge(db_type) {
+  const map = {
+    mysql: `<span class="tag" style="background:#e0f2fe;color:#0369a1">MySQL</span>`,
+    tidb:  `<span class="tag" style="background:#fef3c7;color:#b45309">TiDB</span>`,
+  };
+  return map[db_type] || `<span class="tag">${db_type || 'mysql'}</span>`;
+}
+
 function renderInstances() {
   const list = _instances;
   const tbody = document.getElementById('inst-tbody');
@@ -1200,6 +1204,7 @@ function renderInstances() {
       <td><strong>${inst.remark}</strong></td>
       <td class="text-muted">${inst.id + 10000}</td>
       <td>${inst.port}</td>
+      <td>${getDbTypeBadge(inst.db_type)}</td>
       <td>${getEnvBadge(inst.env)}</td>
       <td>
         <button class="btn btn-sm btn-outline-info me-1" onclick="openDbListModal(${inst.id})">
@@ -1323,26 +1328,28 @@ let _editModal = null;
 function openEditModal(id) {
   const inst = _instances.find(i => i.id === id);
   if (!inst) return;
-  document.getElementById('edit-id').value     = inst.id;
-  document.getElementById('edit-remark').value = inst.remark;
-  document.getElementById('edit-ip').value     = inst.ip;
-  document.getElementById('edit-port').value   = inst.port;
-  document.getElementById('edit-env').value    = inst.env || 'test';
+  document.getElementById('edit-id').value      = inst.id;
+  document.getElementById('edit-remark').value  = inst.remark;
+  document.getElementById('edit-ip').value      = inst.ip;
+  document.getElementById('edit-port').value    = inst.port;
+  document.getElementById('edit-env').value     = inst.env || 'test';
+  document.getElementById('edit-dbtype').value  = inst.db_type || 'mysql';
   if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('editModal'));
   _editModal.show();
 }
 
 async function saveEdit() {
-  const id     = parseInt(document.getElementById('edit-id').value);
-  const remark = document.getElementById('edit-remark').value.trim();
-  const ip     = document.getElementById('edit-ip').value.trim();
-  const port   = document.getElementById('edit-port').value.trim();
-  const env    = document.getElementById('edit-env').value;
+  const id      = parseInt(document.getElementById('edit-id').value);
+  const remark  = document.getElementById('edit-remark').value.trim();
+  const ip      = document.getElementById('edit-ip').value.trim();
+  const port    = document.getElementById('edit-port').value.trim();
+  const env     = document.getElementById('edit-env').value;
+  const db_type = document.getElementById('edit-dbtype').value;
 
   if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
-    const res = await apiPut(`/databases/instances/${id}/`, { remark: remark || ip, ip, port, env });
+    const res = await apiPut(`/databases/instances/${id}/`, { remark: remark || ip, ip, port, env, db_type });
     if (res.error) { alert(t('save_fail') + res.error); return; }
   } catch(e) { alert(t('req_fail') + e.message); return; }
 
