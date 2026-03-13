@@ -25,3 +25,9 @@ staticfiles/
 .idea/
 .vscode/
 *.swp
+
+# 内部文档（不上传）
+OPLOG_*.md
+mysql_cluster_setup.md
+API_TEST.md
+.claude/
