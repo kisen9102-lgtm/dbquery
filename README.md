@@ -87,6 +87,16 @@ ALLOWED_HOSTS=*
 
 **2. 构建并启动**
 
+方式 A：直接拉取预构建镜像（推荐，无需本地编译）
+
+```bash
+# docker-compose.yml 中将 build: . 替换为：
+# image: ghcr.io/kisen9102-lgtm/dbquery:1.1
+docker-compose up -d
+```
+
+方式 B：从源码本地构建
+
 ```bash
 docker-compose up -d --build
 ```
@@ -253,6 +263,16 @@ ALLOWED_HOSTS=*
 ```
 
 **2. Build and start**
+
+Option A: Pull the pre-built image (recommended, no local build required)
+
+```bash
+# In docker-compose.yml, replace "build: ." with:
+# image: ghcr.io/kisen9102-lgtm/dbquery:1.1
+docker-compose up -d
+```
+
+Option B: Build from source
 
 ```bash
 docker-compose up -d --build
