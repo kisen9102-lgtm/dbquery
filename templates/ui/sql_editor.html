@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>SQL 编辑器</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/dracula.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; font-size: 13px; background: #1e2532; color: #cdd6f4; overflow: hidden; }
+
+    /* ── 顶部工具栏 ── */
+    #toolbar {
+      height: 42px; background: #181e2e; border-bottom: 1px solid #2e3a55;
+      display: flex; align-items: center; padding: 0 12px; gap: 6px; flex-shrink: 0;
+    }
+    #toolbar .title { font-weight: 700; color: #7dd3fc; font-size: 14px; margin-right: 8px; white-space: nowrap; }
+    #toolbar .sep { width: 1px; height: 22px; background: #2e3a55; margin: 0 4px; }
+    #db-selector {
+      background: #252d3e; border: 1px solid #3a4560; color: #cdd6f4;
+      border-radius: 5px; padding: 3px 8px; font-size: 13px; min-width: 140px;
+    }
+    #db-selector option { background: #252d3e; }
+    .tb-btn {
+      background: #252d3e; border: 1px solid #3a4560; color: #94a3b8;
+      border-radius: 5px; padding: 3px 10px; font-size: 13px; cursor: pointer;
+      display: flex; align-items: center; gap: 5px; transition: all .15s;
+    }
+    .tb-btn:hover { background: #2e3a55; color: #e2e8f0; }
+    .tb-btn.run { background: #1d4ed8; border-color: #2563eb; color: #fff; }
+    .tb-btn.run:hover { background: #2563eb; }
+    .tb-btn.run:disabled { background: #374151; border-color: #4b5563; color: #6b7280; cursor: not-allowed; }
+    #status-bar {
+      margin-left: auto; font-size: 12px; color: #64748b;
+      display: flex; align-items: center; gap: 14px;
+    }
+    #status-bar .status-ok { color: #4ade80; }
+    #status-bar .status-err { color: #f87171; }
+
+    /* ── 主布局 ── */
+    #layout {
+      display: flex; height: calc(100vh - 42px);
+    }
+
+    /* ── 左侧面板 ── */
+    #left-panel {
+      width: 220px; min-width: 140px; max-width: 400px;
+      background: #161c2c; border-right: 1px solid #2e3a55;
+      display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden;
+    }
+    #left-panel .panel-header {
+      padding: 8px 12px; font-size: 12px; font-weight: 600; color: #64748b;
+      background: #181e2e; border-bottom: 1px solid #2e3a55; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    #table-tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .tree-group { }
+    .tree-group-header {
+      padding: 5px 12px; font-size: 12px; color: #60a5fa; font-weight: 600;
+      display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    }
+    .tree-group-header:hover { background: #1e2a3e; }
+    .tree-item {
+      padding: 4px 12px 4px 28px; font-size: 12px; color: #94a3b8;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tree-item:hover { background: #1e2a3e; color: #e2e8f0; }
+    .tree-item.active { background: #1d4ed820; color: #7dd3fc; }
+    .tree-item i { font-size: 12px; flex-shrink: 0; }
+    .tree-rows { font-size: 11px; color: #475569; margin-left: auto; flex-shrink: 0; }
+
+    /* ── 分割条 ── */
+    .resizer-h {
+      width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+    }
+    .resizer-h:hover, .resizer-h.dragging { background: #3b82f6; }
+    .resizer-v {
+      height: 5px; background: transparent; cursor: row-resize; flex-shrink: 0;
+    }
+    .resizer-v:hover, .resizer-v.dragging { background: #3b82f6; }
+
+    /* ── 右侧主区 ── */
+    #right-panel {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+    }
+
+    /* ── 编辑器区 ── */
+    #editor-wrap {
+      flex: 0 0 260px; min-height: 80px; display: flex; flex-direction: column;
+      border-bottom: 1px solid #2e3a55; overflow: hidden;
+    }
+    .CodeMirror {
+      height: 100% !important; font-size: 13px; font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+      line-height: 1.6;
+    }
+    .CodeMirror-scroll { height: 100%; }
+
+    /* ── 结果区 ── */
+    #result-area {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 60px;
+    }
+    #result-tabs {
+      display: flex; background: #181e2e; border-bottom: 1px solid #2e3a55; flex-shrink: 0;
+    }
+    .result-tab {
+      padding: 6px 16px; font-size: 12px; color: #64748b; cursor: pointer;
+      border-bottom: 2px solid transparent; white-space: nowrap;
+    }
+    .result-tab.active { color: #7dd3fc; border-bottom-color: #3b82f6; }
+    #result-content { flex: 1; overflow: auto; }
+
+    /* ── 结果表格 ── */
+    #result-table-wrap { width: 100%; height: 100%; overflow: auto; }
+    .res-table {
+      border-collapse: collapse; width: max-content; min-width: 100%;
+      font-size: 12px;
+    }
+    .res-table th {
+      position: sticky; top: 0; z-index: 1;
+      background: #1a2233; color: #7dd3fc; font-weight: 600;
+      padding: 6px 12px; border-bottom: 1px solid #2e3a55;
+      border-right: 1px solid #2e3a55; white-space: nowrap; text-align: left;
+    }
+    .res-table td {
+      padding: 4px 12px; border-bottom: 1px solid #1e2a3e;
+      border-right: 1px solid #1e2a3e; white-space: nowrap;
+      color: #cbd5e1; max-width: 400px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .res-table tr:hover td { background: #1e2a3e; }
+    .res-table td.null { color: #475569; font-style: italic; }
+    .res-table td.num { color: #a5f3fc; }
+
+    /* ── 多结果 Tab ── */
+    #multi-result-tabs { display: flex; background: #1a2233; border-bottom: 1px solid #2e3a55; flex-shrink: 0; }
+    .mr-tab {
+      padding: 5px 14px; font-size: 12px; color: #64748b; cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .mr-tab.active { color: #7dd3fc; border-bottom-color: #3b82f6; }
+
+    /* ── 信息/错误 ── */
+    #info-panel {
+      padding: 12px 16px; font-family: monospace; font-size: 12px;
+      white-space: pre-wrap; line-height: 1.7;
+    }
+    .info-ok { color: #4ade80; }
+    .info-err { color: #f87171; }
+    .info-meta { color: #94a3b8; }
+
+    /* ── 底部状态栏 ── */
+    #bottom-bar {
+      height: 24px; background: #181e2e; border-top: 1px solid #2e3a55;
+      display: flex; align-items: center; padding: 0 12px; gap: 20px;
+      font-size: 11px; color: #475569; flex-shrink: 0;
+    }
+    #bottom-bar span b { color: #94a3b8; }
+
+    /* ── 加载 spinner ── */
+    .spin { animation: spin .8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 滚动条 ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2e3a55; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+  </style>
+</head>
+<body>
+
+<!-- ── 顶部工具栏 ── -->
+<div id="toolbar">
+  <span class="title"><i class="bi bi-database-fill me-1" style="color:#60a5fa"></i>SQL 编辑器</span>
+  <div class="sep"></div>
+  <select id="db-selector" onchange="onDbChange()"><option value="">选择数据库...</option></select>
+  <div class="sep"></div>
+  <button class="tb-btn run" id="btn-run" onclick="runSQL()" title="执行 (F9)">
+    <i class="bi bi-play-fill"></i>执行
+  </button>
+  <button class="tb-btn" onclick="runSelected()" title="执行选中语句">
+    <i class="bi bi-play"></i>执行选中
+  </button>
+  <button class="tb-btn" onclick="formatSQL()" title="格式化">
+    <i class="bi bi-braces"></i>格式化
+  </button>
+  <button class="tb-btn" onclick="clearEditor()" title="清空">
+    <i class="bi bi-eraser"></i>清空
+  </button>
+  <div class="sep"></div>
+  <button id="btn-export-csv" class="tb-btn" onclick="exportCSV()" title="导出 CSV">
+    <i class="bi bi-download"></i>CSV
+  </button>
+  <div id="status-bar">
+    <span id="conn-info"></span>
+    <span id="exec-status"></span>
+  </div>
+</div>
+
+<!-- ── 主布局 ── -->
+<div id="layout">
+
+  <!-- 左侧对象浏览器 -->
+  <div id="left-panel">
+    <div class="panel-header">
+      <span><i class="bi bi-diagram-2 me-1"></i>对象浏览器</span>
+      <i class="bi bi-arrow-clockwise" style="cursor:pointer;color:#3b82f6" onclick="loadTables()" title="刷新"></i>
+    </div>
+    <div id="table-tree"><div style="padding:12px;color:#475569;font-size:12px">选择数据库后加载表...</div></div>
+  </div>
+
+  <div class="resizer-h" id="resizer-h"></div>
+
+  <!-- 右侧主区 -->
+  <div id="right-panel">
+    <!-- SQL 编辑器 -->
+    <div id="editor-wrap">
+      <textarea id="sql-editor"></textarea>
+    </div>
+
+    <div class="resizer-v" id="resizer-v"></div>
+
+    <!-- 结果区 -->
+    <div id="result-area">
+      <div id="result-tabs">
+        <div class="result-tab active" data-tab="data" onclick="switchTab(this)">结果集</div>
+        <div class="result-tab" data-tab="info" onclick="switchTab(this)">信息</div>
+      </div>
+      <div id="multi-result-tabs" style="display:none"></div>
+      <div id="result-content">
+        <div id="info-panel" class="info-meta">按 F9 或点击"执行"运行 SQL</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 底部状态栏 ── -->
+<div id="bottom-bar">
+  <span id="bar-rows"><b>行数:</b> —</span>
+  <span id="bar-time"><b>耗时:</b> —</span>
+  <span id="bar-db"><b>数据库:</b> —</span>
+  <span id="bar-host"><b>主机:</b> —</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/sql/sql.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/show-hint.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/hint/sql-hint.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/comment/comment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/selection/active-line.min.js"></script>
+<script>
+// ══ 从 URL 参数读取连接信息 ══
+const params = new URLSearchParams(location.search);
+const CONN = {
+  ip:   params.get('ip')   || '',
+  port: params.get('port') || '3306',
+  db:   params.get('db')   || '',
+};
+
+// ══ CodeMirror 初始化 ══
+const cm = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
+  mode: 'text/x-sql',
+  theme: 'dracula',
+  lineNumbers: true,
+  matchBrackets: true,
+  styleActiveLine: true,
+  extraKeys: {
+    'F9': runSQL,
+    'Ctrl-Enter': runSQL,
+    'Ctrl-/': cm => cm.execCommand('toggleComment'),
+    'Ctrl-Space': 'autocomplete',
+  },
+  hintOptions: { completeSingle: false },
+  autofocus: true,
+});
+cm.setSize('100%', '100%');
+
+// ══ 初始化页面 ══
+document.getElementById('conn-info').innerHTML =
+  `<span style="color:#7dd3fc"><i class="bi bi-plug-fill me-1"></i>dbs_admin@${CONN.ip}:${CONN.port}</span>`;
+document.getElementById('bar-host').innerHTML = `<b>主机:</b> ${CONN.ip}:${CONN.port}`;
+
+// 加载数据库列表
+async function loadDBList() {
+  try {
+    const r = await fetch(`/databases/?ip=${CONN.ip}&port=${CONN.port}`, {credentials: 'same-origin'});
+    const data = await r.json();
+    const sel = document.getElementById('db-selector');
+    sel.innerHTML = '<option value="">选择数据库...</option>';
+    (data.db_names || []).forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
+    });
+    if (CONN.db) {
+      sel.value = CONN.db;  // 显式赋值，确保 value 生效
+      loadTables();
+      updateBarDB(CONN.db);
+    }
+  } catch(e) { console.error(e); }
+}
+
+function onDbChange() {
+  CONN.db = document.getElementById('db-selector').value;
+  updateBarDB(CONN.db);
+  if (CONN.db) loadTables();
+  else document.getElementById('table-tree').innerHTML = '<div style="padding:12px;color:#475569;font-size:12px">选择数据库后加载表...</div>';
+}
+
+function updateBarDB(db) {
+  document.getElementById('bar-db').innerHTML = `<b>数据库:</b> ${db || '—'}`;
+}
+
+// ══ 加载表列表 ══
+let allTables = [];
+async function loadTables() {
+  const db = document.getElementById('db-selector').value;
+  if (!db) return;
+  const tree = document.getElementById('table-tree');
+  tree.innerHTML = '<div style="padding:12px;color:#475569;font-size:12px"><i class="bi bi-arrow-clockwise spin me-1"></i>加载中...</div>';
+  try {
+    const r = await fetch(`/databases/tables/?ip=${CONN.ip}&port=${CONN.port}&db=${enc(db)}`, {credentials: 'same-origin'});
+    const data = await r.json();
+    allTables = data.tables || [];
+    renderTree(allTables);
+  } catch(e) {
+    tree.innerHTML = `<div style="padding:12px;color:#f87171;font-size:12px">${e.message}</div>`;
+  }
+}
+
+function renderTree(tables) {
+  const tree = document.getElementById('table-tree');
+  const base = tables.filter(t => t.TABLE_TYPE === 'BASE TABLE');
+  const views = tables.filter(t => t.TABLE_TYPE === 'VIEW');
+
+  let html = '';
+  if (base.length) {
+    html += `<div class="tree-group">
+      <div class="tree-group-header" onclick="toggleGroup(this)">
+        <i class="bi bi-chevron-down" style="font-size:10px"></i>
+        <i class="bi bi-table" style="color:#60a5fa"></i>表 (${base.length})
+      </div>
+      <div class="tree-children">`;
+    base.forEach(t => {
+      const rows = t.TABLE_ROWS != null ? t.TABLE_ROWS.toLocaleString() : '?';
+      html += `<div class="tree-item" onclick="insertTable('${t.TABLE_NAME}')" title="${t.TABLE_NAME}">
+        <i class="bi bi-table" style="color:#38bdf8"></i>
+        <span style="overflow:hidden;text-overflow:ellipsis">${t.TABLE_NAME}</span>
+        <span class="tree-rows">${rows}</span>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  if (views.length) {
+    html += `<div class="tree-group">
+      <div class="tree-group-header" onclick="toggleGroup(this)">
+        <i class="bi bi-chevron-down" style="font-size:10px"></i>
+        <i class="bi bi-eye" style="color:#a78bfa"></i>视图 (${views.length})
+      </div>
+      <div class="tree-children">`;
+    views.forEach(t => {
+      html += `<div class="tree-item" onclick="insertTable('${t.TABLE_NAME}')" title="${t.TABLE_NAME}">
+        <i class="bi bi-eye" style="color:#a78bfa"></i>
+        <span style="overflow:hidden;text-overflow:ellipsis">${t.TABLE_NAME}</span>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  if (!html) html = '<div style="padding:12px;color:#475569;font-size:12px">暂无表</div>';
+  tree.innerHTML = html;
+}
+
+function toggleGroup(el) {
+  const children = el.nextElementSibling;
+  const icon = el.querySelector('.bi-chevron-down, .bi-chevron-right');
+  if (children.style.display === 'none') {
+    children.style.display = '';
+    icon.className = icon.className.replace('bi-chevron-right', 'bi-chevron-down');
+  } else {
+    children.style.display = 'none';
+    icon.className = icon.className.replace('bi-chevron-down', 'bi-chevron-right');
+  }
+}
+
+function insertTable(name) {
+  // 双击插入表名到编辑器
+  const cur = cm.getCursor();
+  cm.replaceRange('`' + name + '`', cur);
+  cm.focus();
+  // 高亮选中的树节点
+  document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+// 双击树节点生成 SELECT
+document.getElementById('table-tree').addEventListener('dblclick', e => {
+  const item = e.target.closest('.tree-item');
+  if (!item) return;
+  const name = item.querySelector('span')?.textContent?.trim();
+  if (!name) return;
+  cm.setValue(`SELECT * FROM \`${name}\` LIMIT 100;`);
+  cm.focus();
+  runSQL();
+});
+
+// ══ 执行 SQL ══
+let currentResults = [];
+let currentTab = 0;
+let _infoHtml = '按 F9 或点击"执行"运行 SQL';  // 信息面板内容独立存储，不依赖 DOM
+
+async function runSQL() {
+  const sql = cm.getValue().trim();
+  if (!sql) return;
+  executeSQL(sql);
+}
+
+async function runSelected() {
+  const sel = cm.getSelection().trim();
+  if (!sel) { runSQL(); return; }
+  executeSQL(sel);
+}
+
+async function executeSQL(sql) {
+  const db = document.getElementById('db-selector').value;
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>执行中';
+  setExecStatus('', '');
+  showInfo('<span class="info-meta"><i class="bi bi-arrow-clockwise spin me-1"></i>执行中...</span>');
+
+  try {
+    const r = await fetch('/databases/execute_sql/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
+      credentials: 'same-origin',
+      body: JSON.stringify({ip: CONN.ip, port: parseInt(CONN.port), db, sql}),
+    });
+    const data = await r.json();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-fill"></i>执行';
+
+    if (data.error) {
+      setExecStatus('err', data.message);
+      showInfo(`<span class="info-err"><i class="bi bi-x-circle me-1"></i>错误: ${esc(data.message)}</span>`);
+      document.getElementById('bar-rows').innerHTML = '<b>行数:</b> 错误';
+      return;
+    }
+
+    currentResults = data.results || [];
+    const ms = data.elapsed_ms;
+    document.getElementById('bar-time').innerHTML = `<b>耗时:</b> ${ms} ms`;
+
+    if (currentResults.length === 0) {
+      showInfo('<span class="info-ok">执行成功，无结果集</span>');
+      setExecStatus('ok', `完成 · ${ms}ms`);
+      return;
+    }
+
+    // 先构建信息面板内容（保存到变量，不写 DOM）
+    let infoHtml = '';
+    currentResults.forEach((res, i) => {
+      if (res.type === 'resultset') {
+        const limited = res.limited ? ` <span style="color:#fbbf24">（结果已截断，最多显示 1000 行）</span>` : '';
+        infoHtml += `<span class="info-ok">语句 ${i+1}: 查询成功，返回 ${res.row_count} 行${limited}</span>\n`;
+      } else {
+        infoHtml += `<span class="info-ok">语句 ${i+1}: 影响 ${res.affected_rows} 行</span>\n`;
+      }
+    });
+    infoHtml += `<span class="info-meta">总耗时: ${ms} ms</span>`;
+    _infoHtml = infoHtml;
+
+    // 多语句结果 Tabs + 渲染结果集（此后 info-panel 不在 DOM 中，不能再 getElementById）
+    renderMultiTabs(currentResults);
+    showResultTab(0);
+
+    setExecStatus('ok', `完成 · ${ms}ms`);
+    const first = currentResults[0];
+    document.getElementById('bar-rows').innerHTML = `<b>行数:</b> ${first.type === 'resultset' ? first.row_count : first.affected_rows}`;
+
+  } catch(e) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-fill"></i>执行';
+    setExecStatus('err', e.message);
+    showInfo(`<span class="info-err">请求失败: ${esc(e.message)}</span>`);
+  }
+}
+
+function renderMultiTabs(results) {
+  const wrap = document.getElementById('multi-result-tabs');
+  if (results.length <= 1) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = results.map((r, i) => {
+    const label = r.type === 'resultset' ? `结果 ${i+1} (${r.row_count}行)` : `操作 ${i+1} (${r.affected_rows}行)`;
+    return `<div class="mr-tab ${i===0?'active':''}" onclick="switchMultiTab(this,${i})">${label}</div>`;
+  }).join('');
+}
+
+function switchMultiTab(el, idx) {
+  document.querySelectorAll('.mr-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  showResultTab(idx);
+}
+
+function showResultTab(idx) {
+  const res = currentResults[idx];
+  if (!res) return;
+  const content = document.getElementById('result-content');
+  // 确保显示结果集 tab
+  switchTab(document.querySelector('.result-tab[data-tab="data"]'), false);
+
+  if (res.type === 'resultset') {
+    content.innerHTML = `<div id="result-table-wrap">${buildTable(res.columns, res.rows, res.limited)}</div>`;
+  } else {
+    content.innerHTML = `<div id="info-panel"><span class="info-ok">执行成功，影响 ${res.affected_rows} 行</span></div>`;
+  }
+}
+
+function buildTable(columns, rows, limited) {
+  if (!columns.length) return '<div style="padding:12px;color:#475569">无列信息</div>';
+  let html = '<table class="res-table"><thead><tr>';
+  html += '<th style="color:#475569;min-width:36px">#</th>';
+  columns.forEach(c => { html += `<th>${esc(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  rows.forEach((row, i) => {
+    html += `<tr><td style="color:#475569;text-align:right">${i+1}</td>`;
+    row.forEach(val => {
+      if (val === null || val === undefined) {
+        html += '<td class="null">NULL</td>';
+      } else if (typeof val === 'number') {
+        html += `<td class="num">${val}</td>`;
+      } else {
+        html += `<td title="${esc(String(val))}">${esc(String(val))}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  if (limited) html += '<div style="padding:6px 12px;color:#fbbf24;font-size:11px"><i class="bi bi-exclamation-triangle me-1"></i>结果已截断，仅显示前 1000 行</div>';
+  return html;
+}
+
+// ══ Tab 切换 ══
+function switchTab(el, render=true) {
+  if (typeof el === 'string') el = document.querySelector(`.result-tab[data-tab="${el}"]`);
+  document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const tab = el.dataset.tab;
+  if (tab === 'info' && render) {
+    document.getElementById('result-content').innerHTML = `<div id="info-panel">${_infoHtml}</div>`;
+  }
+}
+
+function showInfo(html) {
+  _infoHtml = html;
+  document.getElementById('result-content').innerHTML = `<div id="info-panel">${html}</div>`;
+  switchTab('info', false);
+}
+
+// ══ 格式化 ══
+function formatSQL() {
+  let sql = cm.getValue();
+  // 简单关键字换行格式化
+  const kw = ['SELECT','FROM','WHERE','JOIN','LEFT JOIN','RIGHT JOIN','INNER JOIN',
+               'GROUP BY','ORDER BY','HAVING','LIMIT','UNION','INSERT INTO',
+               'UPDATE','SET','DELETE FROM','ON','AND','OR'];
+  kw.forEach(k => {
+    sql = sql.replace(new RegExp('\\b' + k + '\\b', 'gi'), '\n' + k);
+  });
+  sql = sql.replace(/^\n/, '').replace(/\n{3,}/g, '\n\n');
+  cm.setValue(sql);
+}
+
+function clearEditor() { cm.setValue(''); cm.focus(); }
+
+// ══ 导出 CSV ══
+function exportCSV() {
+  if (!currentResults.length) return;
+  const res = currentResults[currentTab] || currentResults[0];
+  if (res.type !== 'resultset') return;
+  let csv = res.columns.join(',') + '\n';
+  res.rows.forEach(row => {
+    csv += row.map(v => v === null ? 'NULL' : `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
+  a.download = `query_${Date.now()}.csv`;
+  a.click();
+}
+
+// ══ 状态栏 ══
+function setExecStatus(type, msg) {
+  const el = document.getElementById('exec-status');
+  if (type === 'ok') el.innerHTML = `<span class="status-ok"><i class="bi bi-check-circle me-1"></i>${esc(msg)}</span>`;
+  else if (type === 'err') el.innerHTML = `<span class="status-err"><i class="bi bi-x-circle me-1"></i>${esc(msg)}</span>`;
+  else el.innerHTML = '';
+}
+
+// ══ 拖拽分割条 ══
+(function() {
+  const rh = document.getElementById('resizer-h');
+  const rv = document.getElementById('resizer-v');
+
+  let dragging = null, startX, startY, startW, startH;
+
+  rh.addEventListener('mousedown', e => {
+    dragging = 'h'; startX = e.clientX;
+    startW = document.getElementById('left-panel').offsetWidth;
+    rh.classList.add('dragging'); e.preventDefault();
+  });
+  rv.addEventListener('mousedown', e => {
+    dragging = 'v'; startY = e.clientY;
+    startH = document.getElementById('editor-wrap').offsetHeight;
+    rv.classList.add('dragging'); e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (dragging === 'h') {
+      const w = Math.max(120, Math.min(500, startW + e.clientX - startX));
+      document.getElementById('left-panel').style.width = w + 'px';
+    } else if (dragging === 'v') {
+      const h = Math.max(60, startH + e.clientY - startY);
+      document.getElementById('editor-wrap').style.flex = 'none';
+      document.getElementById('editor-wrap').style.height = h + 'px';
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      rh.classList.remove('dragging'); rv.classList.remove('dragging');
+      dragging = null;
+      cm.refresh();
+    }
+  });
+})();
+
+// ══ 工具函数 ══
+function getCsrf() {
+  return document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1] || '';
+}
+function enc(s) { return encodeURIComponent(s); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══ 启动 ══
+(async () => {
+  try {
+    const me = await fetch('/accounts/api/me/', {credentials: 'same-origin'}).then(r => r.json());
+    if (me.role === 'query') {
+      document.getElementById('btn-export-csv').style.display = 'none';
+    }
+  } catch(e) { /* 忽略，不影响主功能 */ }
+  loadDBList();
+})();
+</script>
+</body>
+</html>
