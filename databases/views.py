@@ -9,6 +9,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 
 from common.config import QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD, DBS_DB_CONFIG
+from .models import Instance
 
 logger = logging.getLogger('dbs')
 
@@ -59,9 +60,12 @@ def _resolve_credentials(account, passwd):
     return account, passwd
 
 FILTER_DB_NAMES = {
+    # MySQL / TiDB 系统库
     'information_schema', 'performance_schema', 'mysql', 'sys', 'test',
     'checksum', 'dba_backup', 'backup_dba', 'percona',
     '#mysql50#lost found', '#mysql50#lost+found',
+    # TiDB 专属系统库
+    'metrics_schema', 'INFORMATION_SCHEMA', 'PERFORMANCE_SCHEMA', 'METRICS_SCHEMA',
 }
 _FILTER_DB_TUPLE = tuple(FILTER_DB_NAMES)
 
@@ -250,9 +254,15 @@ def _is_admin_or_root(user):
     return profile and profile.role == 'admin'
 
 
-def _ops_conn():
-    """返回 ops_db 连接"""
-    return pymysql.connect(**DBS_DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
+def _inst_to_dict(inst):
+    return {
+        'id': inst.id,
+        'remark': inst.remark,
+        'ip': inst.ip,
+        'port': inst.port,
+        'env': inst.env,
+        'db_type': inst.db_type,
+    }
 
 
 class InstanceListView(APIView):
@@ -261,34 +271,27 @@ class InstanceListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        try:
-            conn = _ops_conn()
-            with conn.cursor() as cur:
-                cur.execute("SELECT id, remark, ip, port, env FROM dbs_instances ORDER BY id")
-                rows = cur.fetchall()
-            conn.close()
+        qs = Instance.objects.all().order_by('id')
 
-            # query 角色只返回其所在用户组内的实例
-            if _is_query_role(request.user):
-                from accounts.models import InstanceGroup
-                allowed = set()
-                for group in InstanceGroup.objects.filter(members=request.user):
-                    for item in (group.instances or []):
-                        allowed.add((str(item.get('ip')), int(item.get('port', 0))))
-                rows = [r for r in rows if (str(r['ip']), int(r['port'])) in allowed]
+        # query 角色只返回其所在用户组内的实例
+        if _is_query_role(request.user):
+            from accounts.models import InstanceGroup
+            allowed = set()
+            for group in InstanceGroup.objects.filter(members=request.user):
+                for item in (group.instances or []):
+                    allowed.add((str(item.get('ip')), int(item.get('port', 0))))
+            qs = [inst for inst in qs if (str(inst.ip), inst.port) in allowed]
 
-            return Response(rows)
-        except Exception as exc:
-            logger.error('查询实例列表失败: %s', exc)
-            return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response([_inst_to_dict(inst) for inst in qs])
 
     def post(self, request):
         if not _is_admin_or_root(request.user):
             return Response({'error': '无权限'}, status=status.HTTP_403_FORBIDDEN)
-        remark = request.data.get('remark', '').strip()
-        ip     = request.data.get('ip', '').strip()
-        port   = request.data.get('port')
-        env    = request.data.get('env', 'test')
+        remark  = request.data.get('remark', '').strip()
+        ip      = request.data.get('ip', '').strip()
+        port    = request.data.get('port')
+        env     = request.data.get('env', 'test')
+        db_type = request.data.get('db_type', 'mysql')
 
         if not ip or not port:
             return Response({'error': 'ip 和 port 为必填项'}, status=status.HTTP_400_BAD_REQUEST)
@@ -296,23 +299,18 @@ class InstanceListView(APIView):
             port = int(port)
         except (TypeError, ValueError):
             return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
+        if db_type not in ('mysql', 'tidb'):
+            return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if Instance.objects.filter(ip=ip, port=port).exists():
+            return Response({'error': f'{ip}:{port} 已存在'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            conn = _ops_conn()
-            with conn.cursor() as cur:
-                cur.execute("SELECT id FROM dbs_instances WHERE ip=%s AND port=%s", (ip, port))
-                if cur.fetchone():
-                    conn.close()
-                    return Response({'error': f'{ip}:{port} 已存在'}, status=status.HTTP_400_BAD_REQUEST)
-                cur.execute(
-                    "INSERT INTO dbs_instances (remark, ip, port, env, created_by) VALUES (%s,%s,%s,%s,%s)",
-                    (remark or ip, ip, port, env, request.user.username)
-                )
-                new_id = cur.lastrowid
-            conn.commit()
-            conn.close()
-            return Response({'id': new_id, 'remark': remark or ip, 'ip': ip, 'port': port, 'env': env},
-                            status=status.HTTP_201_CREATED)
+            inst = Instance.objects.create(
+                remark=remark or ip, ip=ip, port=port,
+                env=env, db_type=db_type, created_by=request.user.username,
+            )
+            return Response(_inst_to_dict(inst), status=status.HTTP_201_CREATED)
         except Exception as exc:
             logger.error('新增实例失败: %s', exc)
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -323,45 +321,39 @@ class InstanceDetailView(APIView):
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def _fetch(self, cur, pk):
-        cur.execute("SELECT id, remark, ip, port, env FROM dbs_instances WHERE id=%s", (pk,))
-        return cur.fetchone()
-
     def put(self, request, pk):
         if not _is_admin_or_root(request.user):
             return Response({'error': '无权限'}, status=status.HTTP_403_FORBIDDEN)
         try:
-            conn = _ops_conn()
-            with conn.cursor() as cur:
-                inst = self._fetch(cur, pk)
-                if not inst:
-                    conn.close()
-                    return Response({'error': '实例不存在'}, status=status.HTTP_404_NOT_FOUND)
+            inst = Instance.objects.get(pk=pk)
+        except Instance.DoesNotExist:
+            return Response({'error': '实例不存在'}, status=status.HTTP_404_NOT_FOUND)
 
-                remark = (request.data.get('remark', inst['remark']) or '').strip() or inst['ip']
-                env    = request.data.get('env', inst['env'])
-                ip     = (request.data.get('ip', inst['ip']) or '').strip()
-                port   = request.data.get('port', inst['port'])
-                try:
-                    port = int(port)
-                except (TypeError, ValueError):
-                    conn.close()
-                    return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
+        remark  = (request.data.get('remark', inst.remark) or '').strip() or inst.ip
+        env     = request.data.get('env', inst.env)
+        db_type = request.data.get('db_type', inst.db_type)
+        ip      = (request.data.get('ip', inst.ip) or '').strip()
+        port    = request.data.get('port', inst.port)
+        try:
+            port = int(port)
+        except (TypeError, ValueError):
+            return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
+        if db_type not in ('mysql', 'tidb'):
+            return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
 
-                if (ip != inst['ip'] or port != inst['port']):
-                    cur.execute("SELECT id FROM dbs_instances WHERE ip=%s AND port=%s AND id!=%s", (ip, port, pk))
-                    if cur.fetchone():
-                        conn.close()
-                        return Response({'error': f'{ip}:{port} 已被其他实例占用'},
-                                        status=status.HTTP_400_BAD_REQUEST)
+        if (ip != inst.ip or port != inst.port) and \
+                Instance.objects.filter(ip=ip, port=port).exclude(pk=pk).exists():
+            return Response({'error': f'{ip}:{port} 已被其他实例占用'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-                cur.execute(
-                    "UPDATE dbs_instances SET remark=%s, ip=%s, port=%s, env=%s WHERE id=%s",
-                    (remark, ip, port, env, pk)
-                )
-            conn.commit()
-            conn.close()
-            return Response({'id': pk, 'remark': remark, 'ip': ip, 'port': port, 'env': env})
+        try:
+            inst.remark = remark
+            inst.ip = ip
+            inst.port = port
+            inst.env = env
+            inst.db_type = db_type
+            inst.save()
+            return Response(_inst_to_dict(inst))
         except Exception as exc:
             logger.error('更新实例失败: %s', exc)
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -370,14 +362,11 @@ class InstanceDetailView(APIView):
         if not _is_admin_or_root(request.user):
             return Response({'error': '无权限'}, status=status.HTTP_403_FORBIDDEN)
         try:
-            conn = _ops_conn()
-            with conn.cursor() as cur:
-                if not self._fetch(cur, pk):
-                    conn.close()
-                    return Response({'error': '实例不存在'}, status=status.HTTP_404_NOT_FOUND)
-                cur.execute("DELETE FROM dbs_instances WHERE id=%s", (pk,))
-            conn.commit()
-            conn.close()
+            inst = Instance.objects.get(pk=pk)
+        except Instance.DoesNotExist:
+            return Response({'error': '实例不存在'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            inst.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as exc:
             logger.error('删除实例失败: %s', exc)
@@ -408,17 +397,10 @@ class DatabaseSearchView(APIView):
 
         # 查询可访问实例列表
         try:
-            conn = _ops_conn()
-            with conn.cursor() as cur:
-                if ip_filter and port_str:
-                    cur.execute(
-                        "SELECT id, remark, ip, port, env FROM dbs_instances WHERE ip=%s AND port=%s",
-                        (ip_filter, int(port_str))
-                    )
-                else:
-                    cur.execute("SELECT id, remark, ip, port, env FROM dbs_instances ORDER BY id")
-                instances = cur.fetchall()
-            conn.close()
+            qs = Instance.objects.all().order_by('id')
+            if ip_filter and port_str:
+                qs = qs.filter(ip=ip_filter, port=int(port_str))
+            instances = list(qs)
         except Exception as exc:
             logger.error('获取实例列表失败: %s', exc)
             return Response({'error': True, 'message': str(exc), 'results': []},
@@ -434,7 +416,7 @@ class DatabaseSearchView(APIView):
         results = []
         for inst in instances:
             try:
-                conn = _connect(inst['ip'], inst['port'], QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD)
+                conn = _connect(inst.ip, inst.port, QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD)
                 with conn.cursor(pymysql.cursors.DictCursor) as cur:
                     if db_name:
                         # 检查该实例是否存在该数据库
@@ -453,11 +435,12 @@ class DatabaseSearchView(APIView):
                         )
                         stats = cur.fetchone() or {}
                         results.append({
-                            'id': inst['id'],
-                            'ip': inst['ip'],
-                            'port': inst['port'],
-                            'remark': inst['remark'],
-                            'env': inst['env'],
+                            'id': inst.id,
+                            'ip': inst.ip,
+                            'port': inst.port,
+                            'remark': inst.remark,
+                            'env': inst.env,
+                            'db_type': inst.db_type,
                             'db_name': db_name,
                             'table_count': int(stats.get('table_count') or 0),
                             'size_mb': float(stats.get('size_mb') or 0),
@@ -474,24 +457,26 @@ class DatabaseSearchView(APIView):
                         )
                         for db in cur.fetchall():
                             results.append({
-                                'id': inst['id'],
-                                'ip': inst['ip'],
-                                'port': inst['port'],
-                                'remark': inst['remark'],
-                                'env': inst['env'],
+                                'id': inst.id,
+                                'ip': inst.ip,
+                                'port': inst.port,
+                                'remark': inst.remark,
+                                'env': inst.env,
+                                'db_type': inst.db_type,
                                 'db_name': db['db_name'],
                                 'table_count': int(db.get('table_count') or 0),
                                 'size_mb': float(db.get('size_mb') or 0),
                             })
                 conn.close()
             except Exception as exc:
-                logger.warning('搜索实例 %s:%s 失败: %s', inst['ip'], inst['port'], exc)
+                logger.warning('搜索实例 %s:%s 失败: %s', inst.ip, inst.port, exc)
                 results.append({
-                    'id': inst['id'],
-                    'ip': inst['ip'],
-                    'port': inst['port'],
-                    'remark': inst['remark'],
-                    'env': inst['env'],
+                    'id': inst.id,
+                    'ip': inst.ip,
+                    'port': inst.port,
+                    'remark': inst.remark,
+                    'env': inst.env,
+                    'db_type': inst.db_type,
                     'db_name': '-',
                     'table_count': '-',
                     'size_mb': '-',
