@@ -1,5 +1,5 @@
 import os
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dbs_online.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dbquery.settings')
 application = get_wsgi_application()

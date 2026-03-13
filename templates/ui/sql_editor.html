@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>SQL 编辑器</title>
+  <title>SQL Editor</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
@@ -175,29 +175,32 @@
 
 <!-- ── 顶部工具栏 ── -->
 <div id="toolbar">
-  <span class="title"><i class="bi bi-database-fill me-1" style="color:#60a5fa"></i>SQL 编辑器</span>
+  <span class="title"><i class="bi bi-database-fill me-1" style="color:#60a5fa"></i><span data-i18n="title">SQL 编辑器</span></span>
   <div class="sep"></div>
-  <select id="db-selector" onchange="onDbChange()"><option value="">选择数据库...</option></select>
+  <select id="db-selector" onchange="onDbChange()"><option value="" data-i18n="select_db">选择数据库...</option></select>
   <div class="sep"></div>
-  <button class="tb-btn run" id="btn-run" onclick="runSQL()" title="执行 (F9)">
-    <i class="bi bi-play-fill"></i>执行
+  <button class="tb-btn run" id="btn-run" onclick="runSQL()" title="F9">
+    <i class="bi bi-play-fill"></i><span data-i18n="run">执行</span>
   </button>
-  <button class="tb-btn" onclick="runSelected()" title="执行选中语句">
-    <i class="bi bi-play"></i>执行选中
+  <button class="tb-btn" onclick="runSelected()">
+    <i class="bi bi-play"></i><span data-i18n="run_sel">执行选中</span>
   </button>
-  <button class="tb-btn" onclick="formatSQL()" title="格式化">
-    <i class="bi bi-braces"></i>格式化
+  <button class="tb-btn" onclick="formatSQL()">
+    <i class="bi bi-braces"></i><span data-i18n="format">格式化</span>
   </button>
-  <button class="tb-btn" onclick="clearEditor()" title="清空">
-    <i class="bi bi-eraser"></i>清空
+  <button class="tb-btn" onclick="clearEditor()">
+    <i class="bi bi-eraser"></i><span data-i18n="clear">清空</span>
   </button>
   <div class="sep"></div>
-  <button id="btn-export-csv" class="tb-btn" onclick="exportCSV()" title="导出 CSV">
+  <button id="btn-export-csv" class="tb-btn" onclick="exportCSV()">
     <i class="bi bi-download"></i>CSV
   </button>
   <div id="status-bar">
-    <span id="conn-info"></span>
     <span id="exec-status"></span>
+    <select id="lang-btn" onchange="seLangToggle(this.value)" class="tb-btn" style="cursor:pointer">
+      <option value="zh">Language · 中文</option>
+      <option value="en">Language · English</option>
+    </select>
   </div>
 </div>
 
@@ -207,10 +210,10 @@
   <!-- 左侧对象浏览器 -->
   <div id="left-panel">
     <div class="panel-header">
-      <span><i class="bi bi-diagram-2 me-1"></i>对象浏览器</span>
-      <i class="bi bi-arrow-clockwise" style="cursor:pointer;color:#3b82f6" onclick="loadTables()" title="刷新"></i>
+      <span><i class="bi bi-diagram-2 me-1"></i><span data-i18n="obj_browser">对象浏览器</span></span>
+      <i class="bi bi-arrow-clockwise" style="cursor:pointer;color:#3b82f6" onclick="loadTables()"></i>
     </div>
-    <div id="table-tree"><div style="padding:12px;color:#475569;font-size:12px">选择数据库后加载表...</div></div>
+    <div id="table-tree"><div style="padding:12px;color:#475569;font-size:12px" data-i18n="select_db_hint">选择数据库后加载表...</div></div>
   </div>
 
   <div class="resizer-h" id="resizer-h"></div>
@@ -227,12 +230,12 @@
     <!-- 结果区 -->
     <div id="result-area">
       <div id="result-tabs">
-        <div class="result-tab active" data-tab="data" onclick="switchTab(this)">结果集</div>
-        <div class="result-tab" data-tab="info" onclick="switchTab(this)">信息</div>
+        <div class="result-tab active" data-tab="data" onclick="switchTab(this)" data-i18n="tab_result">结果集</div>
+        <div class="result-tab" data-tab="info" onclick="switchTab(this)" data-i18n="tab_info">信息</div>
       </div>
       <div id="multi-result-tabs" style="display:none"></div>
       <div id="result-content">
-        <div id="info-panel" class="info-meta">按 F9 或点击"执行"运行 SQL</div>
+        <div id="info-panel" class="info-meta" data-i18n="hint_run">按 F9 或点击"执行"运行 SQL</div>
       </div>
     </div>
   </div>
@@ -240,10 +243,9 @@
 
 <!-- ── 底部状态栏 ── -->
 <div id="bottom-bar">
-  <span id="bar-rows"><b>行数:</b> —</span>
-  <span id="bar-time"><b>耗时:</b> —</span>
-  <span id="bar-db"><b>数据库:</b> —</span>
-  <span id="bar-host"><b>主机:</b> —</span>
+  <span id="bar-rows"></span>
+  <span id="bar-time"></span>
+  <span id="bar-db"></span>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
@@ -254,13 +256,89 @@
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/selection/active-line.min.js"></script>
 <script>
+// ══ i18n（与主页共用 localStorage('dbs_lang')）══
+const _SE_I18N = {
+  zh: {
+    title:'SQL 编辑器', select_db:'选择数据库...', run:'执行', run_sel:'执行选中',
+    format:'格式化', clear:'清空', obj_browser:'对象浏览器',
+    select_db_hint:'选择数据库后加载表...', tab_result:'结果集', tab_info:'信息',
+    hint_run:'按 F9 或点击"执行"运行 SQL',
+    bar_rows:'行数', bar_time:'耗时', bar_db:'数据库',
+    loading:'加载中...', no_tables:'暂无表',
+    tbl_group:'表', view_group:'视图',
+    exec_running:'执行中', exec_done:'完成',
+    exec_ok:'执行成功，无结果集', exec_err:'错误',
+    req_fail:'请求失败',
+    result_tpl:'语句 {0}: 查询成功，返回 {1} 行',
+    affect_tpl:'语句 {0}: 影响 {1} 行',
+    total_time:'总耗时',
+    limited_tip:'（结果已截断，最多显示 1000 行）',
+    limited_footer:'结果已截断，仅显示前 1000 行',
+    no_col:'无列信息',
+    result_tab_tpl:'结果 {0} ({1}行)', affect_tab_tpl:'操作 {0} ({1}行)',
+    exec_rows_err:'错误',
+  },
+  en: {
+    title:'SQL Editor', select_db:'Select database...', run:'Run', run_sel:'Run Selected',
+    format:'Format', clear:'Clear', obj_browser:'Object Browser',
+    select_db_hint:'Select a database to load tables...', tab_result:'Results', tab_info:'Info',
+    hint_run:'Press F9 or click "Run" to execute SQL',
+    bar_rows:'Rows', bar_time:'Time', bar_db:'Database',
+    loading:'Loading...', no_tables:'No tables',
+    tbl_group:'Tables', view_group:'Views',
+    exec_running:'Running', exec_done:'Done',
+    exec_ok:'Success, no result set', exec_err:'Error',
+    req_fail:'Request failed',
+    result_tpl:'Query {0}: {1} rows returned',
+    affect_tpl:'Query {0}: {1} rows affected',
+    total_time:'Total time',
+    limited_tip:' (truncated, max 1000 rows shown)',
+    limited_footer:'Results truncated — showing first 1000 rows',
+    no_col:'No columns',
+    result_tab_tpl:'Result {0} ({1}r)', affect_tab_tpl:'DML {0} ({1}r)',
+    exec_rows_err:'Error',
+  },
+};
+let _seLang = localStorage.getItem('dbs_lang') || 'zh';
+function st(key) { return (_SE_I18N[_seLang] || _SE_I18N.zh)[key] || _SE_I18N.zh[key] || key; }
+function seLangToggle(val) {
+  _seLang = val;
+  localStorage.setItem('dbs_lang', _seLang);
+  seApplyLang();
+  updateBarDB(CONN.db);
+}
+function stc(key, ...args) {
+  let s = st(key);
+  args.forEach((v, i) => { s = s.replace('{' + i + '}', v); });
+  return s;
+}
+function seApplyLang() {
+  updatePageTitle();
+  document.documentElement.lang = _seLang === 'zh' ? 'zh-CN' : 'en';
+  const sel = document.getElementById('lang-btn');
+  if (sel) sel.value = _seLang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = st(el.dataset.i18n); });
+  // 底部状态栏初始值
+  document.getElementById('bar-rows').innerHTML = `<b>${st('bar_rows')}:</b> —`;
+  document.getElementById('bar-time').innerHTML = `<b>${st('bar_time')}:</b> —`;
+  document.getElementById('bar-db').innerHTML   = `<b>${st('bar_db')}:</b> —`;
+}
+
 // ══ 从 URL 参数读取连接信息 ══
 const params = new URLSearchParams(location.search);
 const CONN = {
-  ip:   params.get('ip')   || '',
-  port: params.get('port') || '3306',
-  db:   params.get('db')   || '',
+  ip:     params.get('ip')      || '',
+  port:   params.get('port')    || '3306',
+  db:     params.get('db')      || '',
+  instId: params.get('inst_id') || '',
 };
+
+function updatePageTitle() {
+  const db = CONN.db || '';
+  document.title = CONN.instId
+    ? (db ? `Query:${CONN.instId}|${db}` : `Query:${CONN.instId}`)
+    : (db ? `Query|${db}` : 'SQL Editor');
+}
 
 // ══ CodeMirror 初始化 ══
 const cm = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
@@ -281,9 +359,6 @@ const cm = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
 cm.setSize('100%', '100%');
 
 // ══ 初始化页面 ══
-document.getElementById('conn-info').innerHTML =
-  `<span style="color:#7dd3fc"><i class="bi bi-plug-fill me-1"></i>dbs_admin@${CONN.ip}:${CONN.port}</span>`;
-document.getElementById('bar-host').innerHTML = `<b>主机:</b> ${CONN.ip}:${CONN.port}`;
 
 // 加载数据库列表
 async function loadDBList() {
@@ -291,7 +366,7 @@ async function loadDBList() {
     const r = await fetch(`/databases/?ip=${CONN.ip}&port=${CONN.port}`, {credentials: 'same-origin'});
     const data = await r.json();
     const sel = document.getElementById('db-selector');
-    sel.innerHTML = '<option value="">选择数据库...</option>';
+    sel.innerHTML = `<option value="">${st('select_db')}</option>`;
     (data.db_names || []).forEach(n => {
       const opt = document.createElement('option');
       opt.value = n; opt.textContent = n;
@@ -308,12 +383,13 @@ async function loadDBList() {
 function onDbChange() {
   CONN.db = document.getElementById('db-selector').value;
   updateBarDB(CONN.db);
+  updatePageTitle();
   if (CONN.db) loadTables();
-  else document.getElementById('table-tree').innerHTML = '<div style="padding:12px;color:#475569;font-size:12px">选择数据库后加载表...</div>';
+  else document.getElementById('table-tree').innerHTML = `<div style="padding:12px;color:#475569;font-size:12px">${st('select_db_hint')}</div>`;
 }
 
 function updateBarDB(db) {
-  document.getElementById('bar-db').innerHTML = `<b>数据库:</b> ${db || '—'}`;
+  document.getElementById('bar-db').innerHTML = `<b>${st('bar_db')}:</b> ${db || '—'}`;
 }
 
 // ══ 加载表列表 ══
@@ -322,7 +398,7 @@ async function loadTables() {
   const db = document.getElementById('db-selector').value;
   if (!db) return;
   const tree = document.getElementById('table-tree');
-  tree.innerHTML = '<div style="padding:12px;color:#475569;font-size:12px"><i class="bi bi-arrow-clockwise spin me-1"></i>加载中...</div>';
+  tree.innerHTML = `<div style="padding:12px;color:#475569;font-size:12px"><i class="bi bi-arrow-clockwise spin me-1"></i>${st('loading')}</div>`;
   try {
     const r = await fetch(`/databases/tables/?ip=${CONN.ip}&port=${CONN.port}&db=${enc(db)}`, {credentials: 'same-origin'});
     const data = await r.json();
@@ -343,7 +419,7 @@ function renderTree(tables) {
     html += `<div class="tree-group">
       <div class="tree-group-header" onclick="toggleGroup(this)">
         <i class="bi bi-chevron-down" style="font-size:10px"></i>
-        <i class="bi bi-table" style="color:#60a5fa"></i>表 (${base.length})
+        <i class="bi bi-table" style="color:#60a5fa"></i>${st('tbl_group')} (${base.length})
       </div>
       <div class="tree-children">`;
     base.forEach(t => {
@@ -360,7 +436,7 @@ function renderTree(tables) {
     html += `<div class="tree-group">
       <div class="tree-group-header" onclick="toggleGroup(this)">
         <i class="bi bi-chevron-down" style="font-size:10px"></i>
-        <i class="bi bi-eye" style="color:#a78bfa"></i>视图 (${views.length})
+        <i class="bi bi-eye" style="color:#a78bfa"></i>${st('view_group')} (${views.length})
       </div>
       <div class="tree-children">`;
     views.forEach(t => {
@@ -371,7 +447,7 @@ function renderTree(tables) {
     });
     html += '</div></div>';
   }
-  if (!html) html = '<div style="padding:12px;color:#475569;font-size:12px">暂无表</div>';
+  if (!html) html = `<div style="padding:12px;color:#475569;font-size:12px">${st('no_tables')}</div>`;
   tree.innerHTML = html;
 }
 
@@ -429,9 +505,9 @@ async function executeSQL(sql) {
   const db = document.getElementById('db-selector').value;
   const btn = document.getElementById('btn-run');
   btn.disabled = true;
-  btn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>执行中';
+  btn.innerHTML = `<i class="bi bi-arrow-clockwise spin"></i>${st('exec_running')}`;
   setExecStatus('', '');
-  showInfo('<span class="info-meta"><i class="bi bi-arrow-clockwise spin me-1"></i>执行中...</span>');
+  showInfo(`<span class="info-meta"><i class="bi bi-arrow-clockwise spin me-1"></i>${st('exec_running')}...</span>`);
 
   try {
     const r = await fetch('/databases/execute_sql/', {
@@ -442,22 +518,22 @@ async function executeSQL(sql) {
     });
     const data = await r.json();
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-play-fill"></i>执行';
+    btn.innerHTML = `<i class="bi bi-play-fill"></i>${st('run')}`;
 
     if (data.error) {
       setExecStatus('err', data.message);
-      showInfo(`<span class="info-err"><i class="bi bi-x-circle me-1"></i>错误: ${esc(data.message)}</span>`);
-      document.getElementById('bar-rows').innerHTML = '<b>行数:</b> 错误';
+      showInfo(`<span class="info-err"><i class="bi bi-x-circle me-1"></i>${st('exec_err')}: ${esc(data.message)}</span>`);
+      document.getElementById('bar-rows').innerHTML = `<b>${st('bar_rows')}:</b> ${st('exec_rows_err')}`;
       return;
     }
 
     currentResults = data.results || [];
     const ms = data.elapsed_ms;
-    document.getElementById('bar-time').innerHTML = `<b>耗时:</b> ${ms} ms`;
+    document.getElementById('bar-time').innerHTML = `<b>${st('bar_time')}:</b> ${ms} ms`;
 
     if (currentResults.length === 0) {
-      showInfo('<span class="info-ok">执行成功，无结果集</span>');
-      setExecStatus('ok', `完成 · ${ms}ms`);
+      showInfo(`<span class="info-ok">${st('exec_ok')}</span>`);
+      setExecStatus('ok', `${st('exec_done')} · ${ms}ms`);
       return;
     }
 
@@ -465,28 +541,28 @@ async function executeSQL(sql) {
     let infoHtml = '';
     currentResults.forEach((res, i) => {
       if (res.type === 'resultset') {
-        const limited = res.limited ? ` <span style="color:#fbbf24">（结果已截断，最多显示 1000 行）</span>` : '';
-        infoHtml += `<span class="info-ok">语句 ${i+1}: 查询成功，返回 ${res.row_count} 行${limited}</span>\n`;
+        const limited = res.limited ? ` <span style="color:#fbbf24">${st('limited_tip')}</span>` : '';
+        infoHtml += `<span class="info-ok">${stc('result_tpl', i+1, res.row_count)}${limited}</span>\n`;
       } else {
-        infoHtml += `<span class="info-ok">语句 ${i+1}: 影响 ${res.affected_rows} 行</span>\n`;
+        infoHtml += `<span class="info-ok">${stc('affect_tpl', i+1, res.affected_rows)}</span>\n`;
       }
     });
-    infoHtml += `<span class="info-meta">总耗时: ${ms} ms</span>`;
+    infoHtml += `<span class="info-meta">${st('total_time')}: ${ms} ms</span>`;
     _infoHtml = infoHtml;
 
     // 多语句结果 Tabs + 渲染结果集（此后 info-panel 不在 DOM 中，不能再 getElementById）
     renderMultiTabs(currentResults);
     showResultTab(0);
 
-    setExecStatus('ok', `完成 · ${ms}ms`);
+    setExecStatus('ok', `${st('exec_done')} · ${ms}ms`);
     const first = currentResults[0];
-    document.getElementById('bar-rows').innerHTML = `<b>行数:</b> ${first.type === 'resultset' ? first.row_count : first.affected_rows}`;
+    document.getElementById('bar-rows').innerHTML = `<b>${st('bar_rows')}:</b> ${first.type === 'resultset' ? first.row_count : first.affected_rows}`;
 
   } catch(e) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="bi bi-play-fill"></i>执行';
+    btn.innerHTML = `<i class="bi bi-play-fill"></i>${st('run')}`;
     setExecStatus('err', e.message);
-    showInfo(`<span class="info-err">请求失败: ${esc(e.message)}</span>`);
+    showInfo(`<span class="info-err">${st('req_fail')}: ${esc(e.message)}</span>`);
   }
 }
 
@@ -495,7 +571,7 @@ function renderMultiTabs(results) {
   if (results.length <= 1) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   wrap.innerHTML = results.map((r, i) => {
-    const label = r.type === 'resultset' ? `结果 ${i+1} (${r.row_count}行)` : `操作 ${i+1} (${r.affected_rows}行)`;
+    const label = r.type === 'resultset' ? stc('result_tab_tpl', i+1, r.row_count) : stc('affect_tab_tpl', i+1, r.affected_rows);
     return `<div class="mr-tab ${i===0?'active':''}" onclick="switchMultiTab(this,${i})">${label}</div>`;
   }).join('');
 }
@@ -516,12 +592,12 @@ function showResultTab(idx) {
   if (res.type === 'resultset') {
     content.innerHTML = `<div id="result-table-wrap">${buildTable(res.columns, res.rows, res.limited)}</div>`;
   } else {
-    content.innerHTML = `<div id="info-panel"><span class="info-ok">执行成功，影响 ${res.affected_rows} 行</span></div>`;
+    content.innerHTML = `<div id="info-panel"><span class="info-ok">${stc('affect_tpl', 1, res.affected_rows)}</span></div>`;
   }
 }
 
 function buildTable(columns, rows, limited) {
-  if (!columns.length) return '<div style="padding:12px;color:#475569">无列信息</div>';
+  if (!columns.length) return `<div style="padding:12px;color:#475569">${st('no_col')}</div>`;
   let html = '<table class="res-table"><thead><tr>';
   html += '<th style="color:#475569;min-width:36px">#</th>';
   columns.forEach(c => { html += `<th>${esc(c)}</th>`; });
@@ -540,7 +616,7 @@ function buildTable(columns, rows, limited) {
     html += '</tr>';
   });
   html += '</tbody></table>';
-  if (limited) html += '<div style="padding:6px 12px;color:#fbbf24;font-size:11px"><i class="bi bi-exclamation-triangle me-1"></i>结果已截断，仅显示前 1000 行</div>';
+  if (limited) html += `<div style="padding:6px 12px;color:#fbbf24;font-size:11px"><i class="bi bi-exclamation-triangle me-1"></i>${st('limited_footer')}</div>`;
   return html;
 }
 
@@ -646,6 +722,7 @@ function esc(s) {
 }
 
 // ══ 启动 ══
+seApplyLang();
 (async () => {
   try {
     const me = await fetch('/accounts/api/me/', {credentials: 'same-origin'}).then(r => r.json());

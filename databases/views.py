@@ -394,7 +394,7 @@ class DatabaseSearchView(APIView):
         ip_filter = request.GET.get('ip', '').strip()
         port_str = request.GET.get('port', '').strip()
 
-        if not db_name and not (ip_filter and port_str):
+        if not db_name and not (ip_filter and port_str) and _is_query_role(request.user):
             return Response(
                 {'error': True, 'message': '请输入数据库名称，或同时输入 IP 和端口', 'results': []},
                 status=status.HTTP_400_BAD_REQUEST,
