@@ -1,5 +1,5 @@
 """
-Django settings for dbs_online project (Python 3 / Django 4.2 重构版)
+Django settings for dbquery project (Python 3 / Django 4.2 重构版)
 """
 import os
 from decouple import config, Csv
@@ -46,9 +46,9 @@ TEMPLATES = [
     },
 ]
 
-ROOT_URLCONF = 'dbs_online.urls'
+ROOT_URLCONF = 'dbquery.urls'
 
-WSGI_APPLICATION = 'dbs_online.wsgi.application'
+WSGI_APPLICATION = 'dbquery.wsgi.application'
 
 # ── 数据库（Django 框架用 + 业务数据，统一存 ops_db）────────────────────────────
 DATABASES = {

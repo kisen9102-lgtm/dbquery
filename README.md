@@ -1,163 +1,245 @@
-# dbs_online v2 — MySQL 数据库运维自动化平台
+# dbquery · DBS 数据查询平台
 
-基于原 `dbs_online` 项目重构，升级技术栈并修复全部安全隐患。
-
----
-
-## 新技术栈
-
-| 组件 | 旧版 | 新版 |
-|------|------|------|
-| Python | 2.7 | 3.x |
-| Django | 1.8 | 4.2 LTS |
-| API 框架 | 原生 HttpResponse | Django REST Framework |
-| HTTP 客户端 | `urllib2` | `requests` |
-| 配置管理 | 硬编码凭证 | `python-decouple` + `.env` |
+[中文](#中文说明) | [English](#english)
 
 ---
 
-## 安全修复
+## 中文说明
 
-| 问题 | 修复方式 |
+基于 Django 4.2 + Django REST Framework 构建的 MySQL 数据库运维查询平台，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
+
+### 功能概览
+
+| 模块 | 功能 |
 |------|------|
-| CSRF 中间件被禁用 | DRF 纯 API 服务，不依赖 Session/CSRF；IP 白名单作为统一鉴权层 |
-| SQL 注入（字符串拼接） | **全面参数化查询**（`cursor.execute(sql, (params,))`），消除所有字符串拼接 SQL |
-| 凭证硬编码 | 所有密码/密钥移至 `.env` 文件，通过环境变量读取，不再出现在代码中 |
-| `ALLOWED_HOSTS = ['*']` | 改为从环境变量配置具体主机名 |
-| Shell 注入 | `my.cnf` 通过 SFTP 上传临时文件写入，SQL 初始化同样走临时文件，避免 `echo` 直接写入 |
-| `dbbaseinfo` 动态字段注入 | 对 `queryList` / `otherParams` 中的字段名增加白名单正则校验（`^[A-Za-z0-9_]+$`） |
+| 数据库查询 | 按数据库名或 IP+端口跨实例检索数据库信息 |
+| SQL 查询 | 在线 SQL 编辑器，支持多语句执行、对象浏览器、结果导出 |
+| 实例管理 | 注册 / 编辑 / 删除 MySQL 实例（admin / root 可操作） |
+| 集群拓扑查询 | 查询指定节点的主从角色与复制状态 |
+| 用户管理 | 创建 / 编辑用户，支持三种角色（root / admin / query） |
+| 用户组管理 | 管理实例访问权限组，控制 query 用户可见的实例范围 |
+| 多语言 | 界面支持中文 / English 切换，偏好持久化到浏览器本地存储 |
 
----
+### 角色权限
 
-## 架构改进
+| 角色 | 说明 |
+|------|------|
+| `root` | 全部权限，不受任何限制 |
+| `admin` | 可管理实例、用户、用户组；不可修改 root 账号 |
+| `query` | 只能执行只读 SQL；只能看到所属用户组内的实例；禁止查询系统库 |
 
-- **`common/` 模块**：集中管理配置 (`config.py`)、数据库连接池 (`db_util.py`)、IP 白名单权限类 (`permissions.py`)，消除原项目中各 app 重复的 `config_para.py` / `db_util.py`
-- **IP 白名单**：统一实现为 DRF `Permission` 类 (`IPWhitelistPermission`)，从各 view 中消除重复检查代码
-- **Python 2 语法全面升级**：`unicode()` → `str()`，`has_key()` → `in`，`print` 语句 → `logger`，`thread` 模块 → `threading`，`urllib2` → `requests`
+### 技术栈
 
----
+- **后端**：Python 3.10+、Django 4.2、Django REST Framework
+- **数据库**：MySQL 8.0（业务数据库）+ SQLite（Django 框架元数据）
+- **前端**：Bootstrap 5.3、Bootstrap Icons、CodeMirror 5（单页应用，无需构建）
+- **认证**：Session 认证 + CSRF 保护
 
-## 目录结构
+### 目录结构
 
 ```
-dbs_online_v2/
-├── .env.example             # 配置模板，复制为 .env 后填写真实值
-├── requirements.txt         # Python 依赖
-├── manage.py
-├── logs/                    # 运行日志目录
-├── dbs_online/              # Django 项目配置
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-├── common/                  # 公共模块（新增）
-│   ├── config.py            # 全局配置，从环境变量读取
-│   ├── db_util.py           # 数据库连接池与 context manager
-│   └── permissions.py       # IP 白名单 DRF 权限类
-├── instances/               # MySQL 实例安装与扩容
-│   ├── views.py
-│   ├── installer.py         # 集群安装线程
-│   ├── expansion.py         # 集群扩容线程
-│   ├── check_env.py         # 安装前环境检查
-│   ├── install_remote.py    # SSH 远程安装操作
-│   ├── add_host_to_zabbix_jmms.py  # Zabbix 注册
-│   ├── scp_ssh.py           # Xtrabackup 扩容脚本
-│   └── my_cnf.py            # MySQL 配置文件模板
-├── clusters/                # 集群拓扑查询与构建
-│   ├── views.py
-│   ├── query_arch.py        # 拓扑查询（递归追溯主从）
-│   └── build_arch.py        # 主从架构构建
-├── databases/               # 数据库列表查询
-├── grants/                  # MySQL 权限批量授予
-├── dbs_dns/                 # 域名/IP 查询
-└── dbbaseinfo/              # 数据库基本信息查询
+.
+├── accounts/        # 用户认证、角色、用户组管理
+├── clusters/        # 集群拓扑角色查询
+├── common/          # 配置、数据库连接工具
+├── databases/       # 数据库 / 实例查询与 SQL 执行
+├── dbquery/         # Django 项目配置、路由
+├── templates/       # 前端页面（index.html、sql_editor.html、登录页）
+├── ui/              # 前端视图入口
+├── init_db.sql      # ops_db 初始化 SQL
+├── requirements.txt # Python 依赖
+└── restart.sh       # 快速重启脚本
 ```
 
----
+### 快速部署
 
-## API 端点
-
-| 方法 | 路径 | 功能 |
-|------|------|------|
-| POST | `/instances/install/` | 自动化安装 MySQL 集群 |
-| POST | `/instances/expand_capacity/` | 集群容量扩展 |
-| GET  | `/clusters/query_arch/` | 查询集群主从拓扑 |
-| POST | `/clusters/build_cluster/` | 构建主从架构 |
-| GET  | `/master_slave_arch/query_arch/` | 同上（别名） |
-| POST | `/master_slave_arch/build_cluster/` | 同上（别名） |
-| GET  | `/databases/` | 查询数据库列表 |
-| GET  | `/db_names/` | 同上（别名） |
-| POST | `/grants/` | 批量授予 MySQL 权限 |
-| GET  | `/dbs_dns/get_domains_by_ip/` | 根据 IP 查询域名 |
-| GET  | `/dbs_dns/get_ip_by_domain/` | 根据域名查询 IP |
-| POST | `/dbbaseinfo/` | 查询数据库基本信息 |
-
----
-
-## 快速启动
-
-### 1. 安装依赖
+**1. 安装依赖**
 
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. 配置环境变量
+**2. 配置环境变量**
 
 ```bash
 cp .env.example .env
-# 编辑 .env，填写数据库连接信息、密码、允许访问的 IP 等
+# 编辑 .env，填写数据库连接信息
 ```
 
 `.env` 关键配置项：
 
 ```ini
-SECRET_KEY=your-secret-key-here          # Django 密钥，务必修改
-DEBUG=False
-ALLOWED_HOSTS=127.0.0.1,your-server-ip
-
-DBS_DB_HOST=localhost                    # 运维数据库地址
+DBS_DB_HOST=localhost
 DBS_DB_PORT=3306
 DBS_DB_USER=ops_user
-DBS_DB_PASSWORD=your-db-password
+DBS_DB_PASSWORD=your-password
+DBS_DB_NAME=ops_db
 
-ALLOW_ACCESS_IPS=127.0.0.1,172.20.133.53  # 允许访问的 IP 白名单
-
-DEFAULT_SSH_PASSWORDS=password1,password2  # 新机器 SSH 初始密码列表
-
-NOTIFY_URL=http://your-system/finish_db_install
-DNS_API_URL=http://your-dnsapi/dns/lan/getdomain
-ZABBIX_API_URL=http://your-zabbix/api_jsonrpc.php
-ZABBIX_USER=monitor
-ZABBIX_PASSWORD=your-zabbix-password
-
-ONLINE_ENV=True
+QUERY_DEFAULT_ACCOUNT=dbs_admin
+QUERY_DEFAULT_PASSWORD=your-dbs-admin-password
 ```
 
-### 3. 初始化 & 启动
+**3. 初始化数据库**
 
 ```bash
-# 创建日志目录（首次运行）
-mkdir -p logs
+# 在目标 MySQL 执行建表 SQL
+mysql -u root -p ops_db < init_db.sql
 
-# 开发环境
-python manage.py runserver 0.0.0.0:8000
-
-# 生产环境（推荐 gunicorn）
-gunicorn dbs_online.wsgi:application --bind 0.0.0.0:8000 --workers 4
+# Django 迁移（创建用户认证相关表）
+python3 manage.py migrate
 ```
+
+**4. 创建超级管理员**
+
+```bash
+python3 manage.py create_dbsroot
+# 默认账号：dbsroot / Dbs@Root2026
+```
+
+**5. 在目标 MySQL 实例上创建查询账号**
+
+```sql
+CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
+GRANT SELECT, SHOW DATABASES, REPLICATION CLIENT, PROCESS ON *.* TO 'dbs_admin'@'%';
+FLUSH PRIVILEGES;
+```
+
+**6. 启动服务**
+
+```bash
+bash restart.sh
+# 或
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+访问 `http://localhost:8000`
+
+### 注意事项
+
+- `.env` 含敏感信息，已加入 `.gitignore`，**请勿提交**
+- 生产环境请将 `DEBUG=False`，并配置 `ALLOWED_HOSTS`
+- `SECRET_KEY` 生产环境必须替换为随机字符串
+- 当前使用 Django `runserver`，生产建议改用 `gunicorn` + `nginx`
 
 ---
 
-## 与旧版主要差异对照
+## English
 
-| 旧版问题 | 新版修复 |
-|---------|---------|
-| `thread.start_new_thread(...)` | `threading.Thread(..., daemon=True).start()` |
-| `urllib2.urlopen(...)` | `requests.post/get(...)` |
-| `unicode(e)` | `str(e)` |
-| `dict.has_key(k)` | `k in dict` |
-| `print` 语句 | `logger.info/error(...)` |
-| `WHERE server_group='%s' % val` | `WHERE server_group = %s`, `(val,)` |
-| 各 app 独立 `config_para.py` + `db_util.py` | 统一 `common/` 模块 |
-| IP 白名单分散在各 view | 统一 `IPWhitelistPermission` 类 |
-| `my.cnf` 通过 `echo "..." > file` 写入 | SFTP 上传临时文件，避免 shell 注入 |
+A MySQL database operations and query platform built with Django 4.2 + Django REST Framework. Features cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
+
+### Features
+
+| Module | Description |
+|--------|-------------|
+| DB Search | Search databases by name or IP+port across all registered instances |
+| SQL Query | Online SQL editor with multi-statement execution, object browser, and CSV export |
+| Instance Management | Register / edit / delete MySQL instances (admin / root only) |
+| Cluster Topology | Query master/slave role and replication status for any node |
+| User Management | Create / edit users with three roles: root / admin / query |
+| Group Management | Manage instance access groups to control which instances query users can see |
+| i18n | UI language switches between Chinese and English; preference saved in localStorage |
+
+### Roles & Permissions
+
+| Role | Description |
+|------|-------------|
+| `root` | Full access, no restrictions |
+| `admin` | Manage instances, users, and groups; cannot modify root account |
+| `query` | Read-only SQL only; can only see instances in their assigned groups; system databases are blocked |
+
+### Tech Stack
+
+- **Backend**: Python 3.10+, Django 4.2, Django REST Framework
+- **Database**: MySQL 8.0 (business data) + SQLite (Django metadata)
+- **Frontend**: Bootstrap 5.3, Bootstrap Icons, CodeMirror 5 (SPA, no build step)
+- **Auth**: Session authentication + CSRF protection
+
+### Project Structure
+
+```
+.
+├── accounts/        # Auth, roles, user group management
+├── clusters/        # Cluster topology query
+├── common/          # Config and DB connection utilities
+├── databases/       # Database / instance query and SQL execution
+├── dbquery/         # Django project settings and routing
+├── templates/       # Frontend pages (index.html, sql_editor.html, login)
+├── ui/              # Frontend view entry points
+├── init_db.sql      # ops_db initialization SQL
+├── requirements.txt # Python dependencies
+└── restart.sh       # Quick restart script
+```
+
+### Quick Start
+
+**1. Install dependencies**
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**2. Configure environment**
+
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+Key `.env` settings:
+
+```ini
+DBS_DB_HOST=localhost
+DBS_DB_PORT=3306
+DBS_DB_USER=ops_user
+DBS_DB_PASSWORD=your-password
+DBS_DB_NAME=ops_db
+
+QUERY_DEFAULT_ACCOUNT=dbs_admin
+QUERY_DEFAULT_PASSWORD=your-dbs-admin-password
+```
+
+**3. Initialize the database**
+
+```bash
+# Run the init SQL on your MySQL server
+mysql -u root -p ops_db < init_db.sql
+
+# Run Django migrations
+python3 manage.py migrate
+```
+
+**4. Create the superuser**
+
+```bash
+python3 manage.py create_dbsroot
+# Default credentials: dbsroot / Dbs@Root2026
+```
+
+**5. Create the query account on each MySQL instance**
+
+```sql
+CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
+GRANT SELECT, SHOW DATABASES, REPLICATION CLIENT, PROCESS ON *.* TO 'dbs_admin'@'%';
+FLUSH PRIVILEGES;
+```
+
+**6. Start the server**
+
+```bash
+bash restart.sh
+# or
+python3 manage.py runserver 0.0.0.0:8000
+```
+
+Open `http://localhost:8000`
+
+### Notes
+
+- `.env` contains sensitive credentials and is listed in `.gitignore` — **do not commit it**
+- Set `DEBUG=False` and configure `ALLOWED_HOSTS` for production
+- Replace `SECRET_KEY` with a random string in production
+- The default server is Django `runserver`; use `gunicorn` + `nginx` for production

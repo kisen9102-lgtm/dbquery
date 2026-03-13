@@ -130,50 +130,50 @@
 <!-- ══ 侧边栏 ══ -->
 <div id="sidebar">
   <div class="sidebar-brand">
-    <i class="bi bi-database-fill"></i>DBS 运维平台
+    <i class="bi bi-database-fill"></i><span data-i18n="brand">DBS 运维平台</span>
   </div>
   <div class="sidebar-menu">
-    <div class="menu-label">概览</div>
+    <div class="menu-label" data-i18n="nav_overview">概览</div>
     <div class="menu-item active" data-panel="dashboard">
-      <i class="bi bi-speedometer2"></i>控制台
+      <i class="bi bi-speedometer2"></i><span data-i18n="nav_dashboard">控制台</span>
     </div>
 
-    <div class="menu-label">数据库</div>
+    <div class="menu-label" data-i18n="nav_database">数据库</div>
     <div class="menu-item" data-panel="db-search">
-      <i class="bi bi-search"></i>数据库查询
+      <i class="bi bi-search"></i><span data-i18n="nav_db_search">数据库查询</span>
     </div>
     <div class="menu-item" data-panel="instances">
-      <i class="bi bi-server"></i>实例管理
+      <i class="bi bi-server"></i><span data-i18n="nav_instances">实例管理</span>
     </div>
     <div class="menu-item" onclick="openSqlEditorDirect()">
-      <i class="bi bi-terminal"></i>SQL 查询
+      <i class="bi bi-terminal"></i><span data-i18n="nav_sql_query">SQL 查询</span>
     </div>
 
-    <div class="menu-label nonquery-menu" style="display:none">集群</div>
+    <div class="menu-label nonquery-menu" style="display:none" data-i18n="nav_cluster">集群</div>
     <div class="menu-item nonquery-menu" data-panel="cluster-query" style="display:none">
-      <i class="bi bi-diagram-3"></i>拓扑角色查询
+      <i class="bi bi-diagram-3"></i><span data-i18n="nav_topology">拓扑角色查询</span>
     </div>
 
 
-    <div class="menu-label admin-menu" style="display:none">系统管理</div>
+    <div class="menu-label admin-menu" style="display:none" data-i18n="nav_admin">系统管理</div>
     <div class="menu-item admin-menu" data-panel="users" style="display:none">
-      <i class="bi bi-people"></i>用户管理
+      <i class="bi bi-people"></i><span data-i18n="nav_users">用户管理</span>
     </div>
     <div class="menu-item admin-menu" data-panel="groups" style="display:none">
-      <i class="bi bi-collection"></i>用户组管理
+      <i class="bi bi-collection"></i><span data-i18n="nav_groups">用户组管理</span>
     </div>
   </div>
   <div class="sidebar-footer">
     <i class="bi bi-circle-fill text-success me-1" style="font-size:9px"></i>
-    服务运行中 · 端口 8000
+    <span data-i18n="svc_running">服务运行中 · 端口 8000</span>
   </div>
 </div>
 
 <!-- ══ 顶栏 ══ -->
 <div id="topbar">
-  <span id="page-title">控制台</span>
+  <span id="page-title" data-i18n="nav_dashboard">控制台</span>
   <div class="topbar-right">
-    <span class="badge-env">测试环境</span>
+    <span class="badge-env" data-i18n="test_env">测试环境</span>
     <span class="text-muted" style="font-size:13px">
       <i class="bi bi-clock me-1"></i><span id="clock"></span>
     </span>
@@ -182,8 +182,12 @@
       <span id="user-name" class="fw-500"></span>
       <span id="user-role-badge" class="ms-1" style="font-size:11px;padding:2px 7px;border-radius:10px"></span>
     </span>
+    <select id="lang-btn" onchange="toggleLang(this.value)" class="form-select form-select-sm" style="font-size:12px;width:auto">
+      <option value="zh">Language · 中文</option>
+      <option value="en">Language · English</option>
+    </select>
     <a href="/accounts/logout/" class="btn btn-sm btn-outline-secondary ms-1" style="font-size:12px">
-      <i class="bi bi-box-arrow-right me-1"></i>退出
+      <i class="bi bi-box-arrow-right me-1"></i><span data-i18n="logout">退出</span>
     </a>
   </div>
 </div>
@@ -199,7 +203,7 @@
           <i class="bi bi-database"></i>
           <div>
             <div class="stat-val" id="stat-db-count">-</div>
-            <div class="stat-label">业务数据库数</div>
+            <div class="stat-label" data-i18n="stat_dbs">业务数据库数</div>
           </div>
         </div>
       </div>
@@ -207,8 +211,8 @@
         <div class="stat-card" style="background:linear-gradient(135deg,#16a34a,#15803d)">
           <i class="bi bi-activity"></i>
           <div>
-            <div class="stat-val">运行中</div>
-            <div class="stat-label">Django 服务状态</div>
+            <div class="stat-val" data-i18n="stat_running">运行中</div>
+            <div class="stat-label" data-i18n="stat_django">Django 服务状态</div>
           </div>
         </div>
       </div>
@@ -217,7 +221,7 @@
           <i class="bi bi-server"></i>
           <div>
             <div class="stat-val">8.0.45</div>
-            <div class="stat-label">MySQL 版本</div>
+            <div class="stat-label" data-i18n="stat_mysql_ver">MySQL 版本</div>
           </div>
         </div>
       </div>
@@ -225,8 +229,8 @@
         <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)">
           <i class="bi bi-shield-check"></i>
           <div>
-            <div class="stat-val">已修复</div>
-            <div class="stat-label">SQL 注入 / 注入风险</div>
+            <div class="stat-val" data-i18n="stat_fixed">已修复</div>
+            <div class="stat-label" data-i18n="stat_sql_risk">SQL 注入 / 注入风险</div>
           </div>
         </div>
       </div>
@@ -235,10 +239,10 @@
     <div class="row g-3">
       <div class="col-md-6 admin-only-inst" style="display:none">
         <div class="card">
-          <div class="card-header">快速查询 — 本地数据库列表</div>
+          <div class="card-header" data-i18n="quick_query_title">快速查询 — 本地数据库列表</div>
           <div class="card-body">
             <button class="btn btn-primary btn-sm" onclick="quickQueryDB()">
-              <i class="bi bi-play-fill me-1"></i>立即查询
+              <i class="bi bi-play-fill me-1"></i><span data-i18n="query_now">立即查询</span>
             </button>
             <div class="result-box mt-3" id="dash-db-result"></div>
           </div>
@@ -246,13 +250,13 @@
       </div>
       <div class="col-md-6">
         <div class="card">
-          <div class="card-header">接口清单</div>
+          <div class="card-header" data-i18n="api_list">接口清单</div>
           <div class="card-body p-0">
             <table class="table table-sm mb-0">
-              <thead><tr><th>接口</th><th>方法</th><th>鉴权</th></tr></thead>
+              <thead><tr><th data-i18n="api_endpoint">接口</th><th data-i18n="api_method">方法</th><th data-i18n="api_auth">鉴权</th></tr></thead>
               <tbody>
-                <tr><td>/databases/</td><td><span class="tag tag-ok">GET</span></td><td>无</td></tr>
-                <tr><td>/clusters/query_arch/</td><td><span class="tag tag-ok">GET</span></td><td>IP 白名单</td></tr>
+                <tr><td>/databases/</td><td><span class="tag tag-ok">GET</span></td><td data-i18n="api_no_auth">无</td></tr>
+                <tr><td>/clusters/query_arch/</td><td><span class="tag tag-ok">GET</span></td><td data-i18n="api_ip_wl">IP 白名单</td></tr>
               </tbody>
             </table>
           </div>
@@ -266,52 +270,52 @@
   <!-- ── 数据库查询 ── -->
   <div class="panel" id="panel-db-search">
     <div class="card">
-      <div class="card-header"><i class="bi bi-search me-2"></i>数据库查询</div>
+      <div class="card-header"><i class="bi bi-search me-2"></i><span data-i18n="db_search_title">数据库查询</span></div>
       <div class="card-body">
         <div class="row g-3 mb-3 align-items-end">
           <div class="col-md-4">
-            <label class="form-label">数据库名称</label>
+            <label class="form-label" data-i18n="db_name_label">数据库名称</label>
             <input type="text" class="form-control" id="dbs-name" placeholder="input database name">
           </div>
-          <div class="col-auto d-flex align-items-end pb-1 text-muted admin-only-inst" style="display:none;font-size:13px">或</div>
+          <div class="col-auto d-flex align-items-end pb-1 text-muted admin-only-inst" style="display:none;font-size:13px" data-i18n="or_text">或</div>
           <div class="col-md-3 admin-only-inst" style="display:none">
-            <label class="form-label">实例 IP</label>
-            <input type="text" class="form-control" id="dbs-ip" placeholder="例：192.168.1.10">
+            <label class="form-label" data-i18n="inst_ip_label">实例 IP</label>
+            <input type="text" class="form-control" id="dbs-ip" placeholder="192.168.1.10">
           </div>
           <div class="col-md-2 admin-only-inst" style="display:none">
-            <label class="form-label">端口</label>
+            <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="dbs-port" placeholder="3306">
           </div>
           <div class="col-md-2">
             <button class="btn btn-primary w-100" onclick="searchDatabases()">
-              <i class="bi bi-search me-1"></i>查询
+              <i class="bi bi-search me-1"></i><span data-i18n="search_btn">查询</span>
             </button>
           </div>
         </div>
         <div id="dbs-loading" style="display:none" class="text-muted small mb-2">
-          <i class="bi bi-arrow-repeat spin me-1"></i>正在查询各实例，请稍候…
+          <i class="bi bi-arrow-repeat spin me-1"></i><span data-i18n="searching_msg">正在查询各实例，请稍候…</span>
         </div>
         <div id="dbs-result-wrap" style="display:none">
           <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="text-muted small">共找到 <strong id="dbs-result-count">0</strong> 条记录</span>
+            <span class="text-muted small" id="dbs-result-count-wrap"></span>
           </div>
           <div class="table-responsive">
             <table class="table table-sm table-hover align-middle">
               <thead>
                 <tr>
-                  <th>实例名</th>
-                  <th>实例ID</th>
-                  <th>环境</th>
-                  <th>数据库名</th>
-                  <th>表数量</th>
-                  <th>大小 (MB)</th>
+                  <th data-i18n="col_inst_name">实例名</th>
+                  <th data-i18n="col_inst_id">实例ID</th>
+                  <th data-i18n="col_env">环境</th>
+                  <th data-i18n="col_db_name">数据库名</th>
+                  <th data-i18n="col_tables">表数量</th>
+                  <th data-i18n="col_size">大小 (MB)</th>
                 </tr>
               </thead>
               <tbody id="dbs-result-body"></tbody>
             </table>
           </div>
         </div>
-        <div id="dbs-empty" class="text-muted small" style="display:none">未找到匹配的数据库。</div>
+        <div id="dbs-empty" class="text-muted small" style="display:none" data-i18n="no_db_found">未找到匹配的数据库。</div>
         <div id="dbs-error" class="alert alert-danger py-2 small" style="display:none"></div>
       </div>
     </div>
@@ -320,7 +324,7 @@
   <!-- ── 集群拓扑角色查询 ── -->
   <div class="panel" id="panel-cluster-query">
     <div class="card">
-      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i>集群拓扑角色查询</div>
+      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i><span data-i18n="cluster_title">集群拓扑角色查询</span></div>
       <div class="card-body">
         <div class="row g-3 mb-3 align-items-end">
           <div class="col-md-4">
@@ -328,12 +332,12 @@
             <input type="text" class="form-control" id="cq-ip" value="127.0.0.1">
           </div>
           <div class="col-md-3">
-            <label class="form-label">端口</label>
+            <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="cq-port" value="3306">
           </div>
           <div class="col-md-2">
             <button class="btn btn-primary w-100" onclick="queryArch()">
-              <i class="bi bi-search me-1"></i>查询
+              <i class="bi bi-search me-1"></i><span data-i18n="search_btn">查询</span>
             </button>
           </div>
         </div>
@@ -345,36 +349,36 @@
   <!-- ── 实例管理 ── -->
   <div class="panel" id="panel-instances">
     <div class="card mb-3 admin-only-inst" style="display:none">
-      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>添加实例</div>
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i><span data-i18n="add_inst_title">添加实例</span></div>
       <div class="card-body">
         <div class="alert alert-info py-2 small mb-3">
           <i class="bi bi-info-circle me-1"></i>
-          连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。
+          <span data-i18n="add_inst_info">连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。</span>
         </div>
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
-            <label class="form-label">实例名</label>
+            <label class="form-label" data-i18n="inst_name_label">实例名</label>
             <input type="text" class="form-control" id="inst-remark" placeholder="生产主库">
           </div>
           <div class="col-md-3">
-            <label class="form-label">IP 地址</label>
+            <label class="form-label" data-i18n="ip_label">IP 地址</label>
             <input type="text" class="form-control" id="inst-add-ip" placeholder="127.0.0.1">
           </div>
           <div class="col-md-2">
-            <label class="form-label">端口</label>
+            <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="inst-add-port" value="3306">
           </div>
           <div class="col-md-2">
-            <label class="form-label">环境</label>
+            <label class="form-label" data-i18n="env_label">环境</label>
             <select class="form-select" id="inst-add-env">
-              <option value="test">测试</option>
-              <option value="prod">生产</option>
-              <option value="dev">开发</option>
+              <option value="test" data-i18n="env_test">测试</option>
+              <option value="prod" data-i18n="env_prod">生产</option>
+              <option value="dev" data-i18n="env_dev">开发</option>
             </select>
           </div>
           <div class="col-md-2">
             <button class="btn btn-primary w-100" onclick="addInstance()">
-              <i class="bi bi-plus-lg me-1"></i>添加
+              <i class="bi bi-plus-lg me-1"></i><span data-i18n="add_btn">添加</span>
             </button>
           </div>
         </div>
@@ -382,21 +386,21 @@
     </div>
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <i class="bi bi-server me-2"></i>实例列表
+        <i class="bi bi-server me-2"></i><span data-i18n="inst_list_title">实例列表</span>
         <span class="ms-2 text-muted" style="font-size:13px" id="inst-count"></span>
         <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="refreshInstances()">
-          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+          <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh_btn">刷新</span>
         </button>
       </div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0" id="inst-table">
           <thead>
             <tr>
-              <th>实例名</th><th>实例ID</th><th>端口</th><th>环境</th><th>操作</th>
+              <th data-i18n="col_inst_name">实例名</th><th data-i18n="col_inst_id">实例ID</th><th data-i18n="col_port">端口</th><th data-i18n="col_env">环境</th><th data-i18n="col_actions">操作</th>
             </tr>
           </thead>
           <tbody id="inst-tbody">
-            <tr><td colspan="6" class="text-center text-muted py-4">暂无实例，请先添加</td></tr>
+            <tr><td colspan="6" class="text-center text-muted py-4" data-i18n="no_instances">暂无实例，请先添加</td></tr>
           </tbody>
         </table>
       </div>
@@ -406,27 +410,27 @@
   <!-- ── 用户管理 ── -->
   <div class="panel" id="panel-users">
     <div class="card mb-3">
-      <div class="card-header"><i class="bi bi-person-plus me-2"></i>添加用户</div>
+      <div class="card-header"><i class="bi bi-person-plus me-2"></i><span data-i18n="add_user_title">添加用户</span></div>
       <div class="card-body">
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
-            <label class="form-label">用户名</label>
-            <input type="text" class="form-control" id="add-user-name" placeholder="请输入用户名">
+            <label class="form-label" data-i18n="username_label">用户名</label>
+            <input type="text" class="form-control" id="add-user-name" data-i18n-ph="username_label" placeholder="请输入用户名">
           </div>
           <div class="col-md-3">
-            <label class="form-label">密码</label>
-            <input type="password" class="form-control" id="add-user-pass" placeholder="至少 6 位">
+            <label class="form-label" data-i18n="password_label">密码</label>
+            <input type="password" class="form-control" id="add-user-pass" data-i18n-ph="pass_min" placeholder="至少 6 位">
           </div>
           <div class="col-md-2">
-            <label class="form-label">角色</label>
+            <label class="form-label" data-i18n="role_label">角色</label>
             <select class="form-select" id="add-user-role">
-              <option value="query">查询用户 (query)</option>
-              <option value="admin">管理员 (admin)</option>
+              <option value="query" data-i18n="role_query">查询用户 (query)</option>
+              <option value="admin" data-i18n="role_admin_opt">管理员 (admin)</option>
             </select>
           </div>
           <div class="col-md-2">
             <button class="btn btn-primary w-100" onclick="addUser()">
-              <i class="bi bi-plus-lg me-1"></i>添加
+              <i class="bi bi-plus-lg me-1"></i><span data-i18n="add_btn">添加</span>
             </button>
           </div>
         </div>
@@ -434,16 +438,16 @@
     </div>
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <i class="bi bi-people me-2"></i>用户列表
+        <i class="bi bi-people me-2"></i><span data-i18n="user_list_title">用户列表</span>
         <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="loadUsers()">
-          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+          <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh_btn">刷新</span>
         </button>
       </div>
       <div class="card-body p-0">
         <table class="table table-hover mb-0">
-          <thead><tr><th>#</th><th>用户名</th><th>角色</th><th>注册时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>#</th><th data-i18n="col_username">用户名</th><th data-i18n="col_role">角色</th><th data-i18n="col_reg_time">注册时间</th><th data-i18n="col_actions">操作</th></tr></thead>
           <tbody id="users-tbody">
-            <tr><td colspan="5" class="text-center text-muted py-4">加载中...</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4" data-i18n="loading">加载中...</td></tr>
           </tbody>
         </table>
       </div>
@@ -453,20 +457,20 @@
   <!-- ── 用户组管理 ── -->
   <div class="panel" id="panel-groups">
     <div class="card mb-3">
-      <div class="card-header"><i class="bi bi-plus-circle me-2"></i>新建用户组</div>
+      <div class="card-header"><i class="bi bi-plus-circle me-2"></i><span data-i18n="create_grp_title">新建用户组</span></div>
       <div class="card-body">
         <div class="row g-3 align-items-end">
           <div class="col-md-3">
-            <label class="form-label">组名</label>
-            <input type="text" class="form-control" id="grp-name" placeholder="例：prod-team">
+            <label class="form-label" data-i18n="grp_name_label">组名</label>
+            <input type="text" class="form-control" id="grp-name" placeholder="prod-team">
           </div>
           <div class="col-md-5">
-            <label class="form-label">描述</label>
-            <input type="text" class="form-control" id="grp-desc" placeholder="可选">
+            <label class="form-label" data-i18n="desc_label">描述</label>
+            <input type="text" class="form-control" id="grp-desc" data-i18n-ph="optional_ph" placeholder="可选">
           </div>
           <div class="col-md-2">
             <button class="btn btn-primary w-100" onclick="createGroup()">
-              <i class="bi bi-plus-lg me-1"></i>创建
+              <i class="bi bi-plus-lg me-1"></i><span data-i18n="create_btn">创建</span>
             </button>
           </div>
         </div>
@@ -474,13 +478,13 @@
     </div>
     <div class="card">
       <div class="card-header d-flex align-items-center">
-        <i class="bi bi-collection me-2"></i>用户组列表
+        <i class="bi bi-collection me-2"></i><span data-i18n="grp_list_title">用户组列表</span>
         <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="loadGroups()">
-          <i class="bi bi-arrow-clockwise me-1"></i>刷新
+          <i class="bi bi-arrow-clockwise me-1"></i><span data-i18n="refresh_btn">刷新</span>
         </button>
       </div>
       <div class="card-body p-0">
-        <div id="groups-container" class="p-3">加载中...</div>
+        <div id="groups-container" class="p-3" data-i18n="loading">加载中...</div>
       </div>
     </div>
   </div>
@@ -494,7 +498,7 @@
       <div class="modal-header">
         <h5 class="modal-title">
           <i class="bi bi-database me-2 text-primary"></i>
-          数据库列表 — <span id="dblm-host" class="text-muted" style="font-size:14px;font-weight:400"></span>
+          <span data-i18n="modal_db_list">数据库列表 —</span> <span id="dblm-host" class="text-muted" style="font-size:14px;font-weight:400"></span>
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
@@ -504,20 +508,20 @@
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="text" class="form-control" id="dblm-search"
-              placeholder="过滤数据库名..." oninput="filterDbList()">
+              data-i18n-ph="filter_db_ph" placeholder="过滤数据库名..." oninput="filterDbList()">
           </div>
         </div>
         <!-- 加载状态 / 列表 -->
         <div id="dblm-body" style="min-height:120px;max-height:480px;overflow-y:auto">
           <div class="text-center text-muted py-5">
             <i class="bi bi-arrow-clockwise spin" style="font-size:24px"></i>
-            <div class="mt-2">加载中...</div>
+            <div class="mt-2" data-i18n="loading">加载中...</div>
           </div>
         </div>
       </div>
       <div class="modal-footer justify-content-between">
         <span class="text-muted small" id="dblm-count"></span>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="close_btn">关闭</button>
       </div>
     </div>
   </div>
@@ -528,38 +532,38 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>编辑实例</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i><span data-i18n="edit_inst_title">编辑实例</span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="edit-id">
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">实例名</label>
+            <label class="form-label" data-i18n="inst_name_label">实例名</label>
             <input type="text" class="form-control" id="edit-remark" placeholder="生产主库">
           </div>
           <div class="col-md-6">
-            <label class="form-label">环境</label>
+            <label class="form-label" data-i18n="env_label">环境</label>
             <select class="form-select" id="edit-env">
-              <option value="test">测试</option>
-              <option value="prod">生产</option>
-              <option value="dev">开发</option>
+              <option value="test" data-i18n="env_test">测试</option>
+              <option value="prod" data-i18n="env_prod">生产</option>
+              <option value="dev" data-i18n="env_dev">开发</option>
             </select>
           </div>
           <div class="col-md-5">
-            <label class="form-label">IP 地址</label>
+            <label class="form-label" data-i18n="ip_label">IP 地址</label>
             <input type="text" class="form-control" id="edit-ip" placeholder="127.0.0.1">
           </div>
           <div class="col-md-3">
-            <label class="form-label">端口</label>
+            <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="edit-port">
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel_btn">取消</button>
         <button type="button" class="btn btn-primary" onclick="saveEdit()">
-          <i class="bi bi-check-lg me-1"></i>保存
+          <i class="bi bi-check-lg me-1"></i><span data-i18n="save_btn">保存</span>
         </button>
       </div>
     </div>
@@ -571,30 +575,30 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i>编辑用户</h5>
+        <h5 class="modal-title"><i class="bi bi-person-gear me-2"></i><span data-i18n="edit_user_title">编辑用户</span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="edit-user-id">
         <div class="mb-3">
-          <label class="form-label">用户名</label>
+          <label class="form-label" data-i18n="username_label">用户名</label>
           <input type="text" class="form-control" id="edit-user-name">
         </div>
         <div class="mb-3">
-          <label class="form-label">角色</label>
+          <label class="form-label" data-i18n="role_label">角色</label>
           <select class="form-select" id="edit-user-role">
-            <option value="query">查询用户 (query)</option>
-            <option value="admin">管理员 (admin)</option>
+            <option value="query" data-i18n="role_query">查询用户 (query)</option>
+            <option value="admin" data-i18n="role_admin_opt">管理员 (admin)</option>
           </select>
         </div>
         <div class="mb-3">
-          <label class="form-label">新密码 <span class="text-muted small">（留空不修改）</span></label>
-          <input type="password" class="form-control" id="edit-user-pass" placeholder="至少 6 位">
+          <label class="form-label"><span data-i18n="new_pass_label">新密码</span> <span class="text-muted small" data-i18n="pass_hint">（留空不修改）</span></label>
+          <input type="password" class="form-control" id="edit-user-pass" data-i18n-ph="pass_min" placeholder="至少 6 位">
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-        <button type="button" class="btn btn-primary" onclick="saveUserEdit()">保存</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel_btn">取消</button>
+        <button type="button" class="btn btn-primary" onclick="saveUserEdit()" data-i18n="save_btn">保存</button>
       </div>
     </div>
   </div>
@@ -605,7 +609,7 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-collection me-2"></i>用户组详情：<span id="gm-name"></span></h5>
+        <h5 class="modal-title"><i class="bi bi-collection me-2"></i><span data-i18n="grp_detail_title">用户组详情：</span><span id="gm-name"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
@@ -613,41 +617,41 @@
         <div class="row g-4">
           <!-- 实例列表 -->
           <div class="col-md-6">
-            <h6 class="fw-600 mb-2"><i class="bi bi-server me-1 text-primary"></i>实例列表</h6>
+            <h6 class="fw-600 mb-2"><i class="bi bi-server me-1 text-primary"></i><span data-i18n="inst_list_h">实例列表</span></h6>
             <div class="input-group mb-2">
               <select class="form-select form-select-sm" id="gm-inst-select">
-                <option value="">-- 选择实例 --</option>
+                <option value="" data-i18n="select_inst">-- 选择实例 --</option>
               </select>
-              <button class="btn btn-sm btn-primary" onclick="addGroupInstance()">添加</button>
+              <button class="btn btn-sm btn-primary" onclick="addGroupInstance()" data-i18n="add_btn">添加</button>
             </div>
             <div class="input-group mb-2">
-              <span class="input-group-text" style="font-size:12px">按实例ID</span>
-              <input type="number" class="form-control form-control-sm" id="gm-inst-id-input" placeholder="例：10001">
-              <button class="btn btn-sm btn-outline-primary" onclick="addGroupInstanceById()">添加</button>
+              <span class="input-group-text" style="font-size:12px" data-i18n="by_inst_id">按实例ID</span>
+              <input type="number" class="form-control form-control-sm" id="gm-inst-id-input" placeholder="10001">
+              <button class="btn btn-sm btn-outline-primary" onclick="addGroupInstanceById()" data-i18n="add_btn">添加</button>
             </div>
             <table class="table table-sm">
-              <thead><tr><th>实例名</th><th>实例ID</th><th>IP</th><th>端口</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="col_inst_name">实例名</th><th data-i18n="col_inst_id">实例ID</th><th>IP</th><th data-i18n="col_port">端口</th><th></th></tr></thead>
               <tbody id="gm-inst-tbody"></tbody>
             </table>
           </div>
           <!-- 成员列表 -->
           <div class="col-md-6">
-            <h6 class="fw-600 mb-2"><i class="bi bi-people me-1 text-success"></i>成员列表</h6>
+            <h6 class="fw-600 mb-2"><i class="bi bi-people me-1 text-success"></i><span data-i18n="member_list_h">成员列表</span></h6>
             <div class="input-group mb-2">
               <select class="form-select form-select-sm" id="gm-member-select">
-                <option value="">-- 选择用户 --</option>
+                <option value="" data-i18n="select_user">-- 选择用户 --</option>
               </select>
-              <button class="btn btn-sm btn-success" onclick="addGroupMember()">添加</button>
+              <button class="btn btn-sm btn-success" onclick="addGroupMember()" data-i18n="add_btn">添加</button>
             </div>
             <table class="table table-sm">
-              <thead><tr><th>用户名</th><th></th></tr></thead>
+              <thead><tr><th data-i18n="col_username">用户名</th><th></th></tr></thead>
               <tbody id="gm-member-tbody"></tbody>
             </table>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="close_btn">关闭</button>
       </div>
     </div>
   </div>
@@ -655,6 +659,191 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// ══ i18n ══
+const I18N = {
+  zh: {
+    page_title:'DBS 运维管理平台', brand:'DBS 运维平台',
+    nav_overview:'概览', nav_dashboard:'控制台', nav_database:'数据库',
+    nav_db_search:'数据库查询', nav_instances:'实例管理', nav_sql_query:'SQL 查询',
+    nav_cluster:'集群', nav_topology:'拓扑角色查询',
+    nav_admin:'系统管理', nav_users:'用户管理', nav_groups:'用户组管理',
+    svc_running:'服务运行中 · 端口 8000', test_env:'测试环境', logout:'退出',
+    stat_dbs:'业务数据库数', stat_running:'运行中', stat_django:'Django 服务状态',
+    stat_mysql_ver:'MySQL 版本', stat_fixed:'已修复', stat_sql_risk:'SQL 注入 / 注入风险',
+    quick_query_title:'快速查询 — 本地数据库列表', query_now:'立即查询',
+    api_list:'接口清单', api_endpoint:'接口', api_method:'方法', api_auth:'鉴权',
+    api_no_auth:'无', api_ip_wl:'IP 白名单',
+    db_search_title:'数据库查询', db_name_label:'数据库名称', or_text:'或',
+    inst_ip_label:'实例 IP', port_label:'端口', search_btn:'查询',
+    searching_msg:'正在查询各实例，请稍候…',
+    col_inst_name:'实例名', col_inst_id:'实例ID', col_env:'环境',
+    col_db_name:'数据库名', col_tables:'表数量', col_size:'大小 (MB)',
+    no_db_found:'未找到匹配的数据库。',
+    cluster_title:'集群拓扑角色查询',
+    add_inst_title:'添加实例',
+    add_inst_info:'连接使用统一账号 dbs_admin，请确保目标实例已创建该账号。',
+    inst_name_label:'实例名', ip_label:'IP 地址', env_label:'环境',
+    env_test:'测试', env_prod:'生产', env_dev:'开发', add_btn:'添加',
+    inst_list_title:'实例列表', refresh_btn:'刷新',
+    col_port:'端口', col_actions:'操作',
+    no_instances:'暂无实例，请先添加',
+    db_query_btn:'数据库查询', test_conn_btn:'测试连接', edit_btn:'编辑',
+    add_user_title:'添加用户', username_label:'用户名', password_label:'密码',
+    pass_min:'至少 6 位', role_label:'角色',
+    role_query:'查询用户 (query)', role_admin_opt:'管理员 (admin)',
+    user_list_title:'用户列表', col_username:'用户名', col_role:'角色',
+    col_reg_time:'注册时间', loading:'加载中...',
+    create_grp_title:'新建用户组', grp_name_label:'组名',
+    desc_label:'描述', optional_ph:'可选', create_btn:'创建',
+    grp_list_title:'用户组列表',
+    modal_db_list:'数据库列表 —', filter_db_ph:'过滤数据库名...',
+    close_btn:'关闭', col_db:'数据库名',
+    edit_inst_title:'编辑实例', cancel_btn:'取消', save_btn:'保存',
+    edit_user_title:'编辑用户',
+    new_pass_label:'新密码', pass_hint:'（留空不修改）',
+    grp_detail_title:'用户组详情：',
+    inst_list_h:'实例列表', select_inst:'-- 选择实例 --', by_inst_id:'按实例ID',
+    member_list_h:'成员列表', select_user:'-- 选择用户 --',
+    no_inst_short:'暂无实例', no_members:'暂无成员', no_groups:'暂无用户组',
+    role_root_lbl:'root', role_admin_lbl:'管理员', role_query_lbl:'查询用户',
+    superuser:'超级用户',
+    env_prod_tag:'生产', env_test_tag:'测试', env_dev_tag:'开发',
+    topo_master:'主库 Master', topo_slave:'从库 Slave', topo_standalone:'独立节点',
+    topo_normal:'正常', topo_abnormal:'异常', topo_ro:'只读', topo_rw:'读写',
+    topo_node:'节点', topo_role:'角色', topo_status:'状态', topo_rw_mode:'读写模式',
+    topo_server_id:'Server ID', topo_mysql_ver:'MySQL 版本', topo_gtid:'GTID 模式',
+    topo_master_addr:'主库地址', topo_io:'IO 线程', topo_sql:'SQL 线程',
+    topo_lag:'复制延迟', topo_lag_unit:' 秒', topo_err_info:'错误信息',
+    topo_slaves:'从库连接', topo_no_slave:'无从库连接', topo_no_data:'无数据',
+    topo_querying:'查询中...',
+    inst_count_tpl:'共 {0} 个', db_count_tpl:'共 {0} 个数据库',
+    found_tpl:'共找到 {0} 条记录',
+    conn_ok_tpl:'连接成功！找到 {0} 个业务数据库：\n{1}',
+    conn_fail:'连接失败：', req_fail:'请求失败：',
+    save_fail:'保存失败：', add_fail:'添加失败：',
+    del_inst_confirm:'确认删除该实例？',
+    del_user_tpl:'确认删除用户 {0}？',
+    del_grp_tpl:'确认删除用户组 {0}？',
+    need_db_name:'请输入数据库名称',
+    sys_db_deny:'禁止查询系统库：',
+    need_ip_port:'IP 和端口为必填项',
+    need_user_pass:'用户名和密码不能为空',
+    need_username:'用户名不能为空',
+    need_grp_name:'请填写组名',
+    need_select_inst:'请选择实例',
+    need_inst_id:'请输入实例ID',
+    inst_not_found:'未找到实例ID：',
+    need_select_user:'请选择用户',
+    no_inst_go_add:'请先在「实例管理」页面添加一个 MySQL 实例，再点击「查询」按钮打开 SQL 编辑器。',
+    no_db_in_inst:'该实例暂无业务数据库',
+    connecting:'连接中...',
+  },
+  en: {
+    page_title:'DBS Ops Platform', brand:'DBS Ops Platform',
+    nav_overview:'Overview', nav_dashboard:'Dashboard', nav_database:'Database',
+    nav_db_search:'DB Search', nav_instances:'Instances', nav_sql_query:'SQL Query',
+    nav_cluster:'Cluster', nav_topology:'Topology Query',
+    nav_admin:'Admin', nav_users:'Users', nav_groups:'Groups',
+    svc_running:'Service running · Port 8000', test_env:'Test Env', logout:'Logout',
+    stat_dbs:'Business DBs', stat_running:'Running', stat_django:'Django Status',
+    stat_mysql_ver:'MySQL Version', stat_fixed:'Fixed', stat_sql_risk:'SQL Injection Risk',
+    quick_query_title:'Quick Query — Local DB List', query_now:'Query Now',
+    api_list:'API List', api_endpoint:'Endpoint', api_method:'Method', api_auth:'Auth',
+    api_no_auth:'None', api_ip_wl:'IP Whitelist',
+    db_search_title:'Database Search', db_name_label:'Database Name', or_text:'or',
+    inst_ip_label:'Instance IP', port_label:'Port', search_btn:'Search',
+    searching_msg:'Querying instances, please wait…',
+    col_inst_name:'Instance', col_inst_id:'Instance ID', col_env:'Env',
+    col_db_name:'DB Name', col_tables:'Tables', col_size:'Size (MB)',
+    no_db_found:'No matching database found.',
+    cluster_title:'Cluster Topology Query',
+    add_inst_title:'Add Instance',
+    add_inst_info:'Connection uses unified account dbs_admin. Ensure the target instance has this account.',
+    inst_name_label:'Instance Name', ip_label:'IP Address', env_label:'Environment',
+    env_test:'Test', env_prod:'Prod', env_dev:'Dev', add_btn:'Add',
+    inst_list_title:'Instance List', refresh_btn:'Refresh',
+    col_port:'Port', col_actions:'Actions',
+    no_instances:'No instances yet. Please add one.',
+    db_query_btn:'DB Query', test_conn_btn:'Test Conn', edit_btn:'Edit',
+    add_user_title:'Add User', username_label:'Username', password_label:'Password',
+    pass_min:'At least 6 chars', role_label:'Role',
+    role_query:'Query User (query)', role_admin_opt:'Admin (admin)',
+    user_list_title:'User List', col_username:'Username', col_role:'Role',
+    col_reg_time:'Registered', loading:'Loading...',
+    create_grp_title:'Create Group', grp_name_label:'Group Name',
+    desc_label:'Description', optional_ph:'Optional', create_btn:'Create',
+    grp_list_title:'Group List',
+    modal_db_list:'Database List —', filter_db_ph:'Filter database name...',
+    close_btn:'Close', col_db:'Database',
+    edit_inst_title:'Edit Instance', cancel_btn:'Cancel', save_btn:'Save',
+    edit_user_title:'Edit User',
+    new_pass_label:'New Password', pass_hint:'(leave blank to keep)',
+    grp_detail_title:'Group Details: ',
+    inst_list_h:'Instances', select_inst:'-- Select Instance --', by_inst_id:'By Instance ID',
+    member_list_h:'Members', select_user:'-- Select User --',
+    no_inst_short:'No instances', no_members:'No members', no_groups:'No groups',
+    role_root_lbl:'root', role_admin_lbl:'Admin', role_query_lbl:'Query User',
+    superuser:'Superuser',
+    env_prod_tag:'Prod', env_test_tag:'Test', env_dev_tag:'Dev',
+    topo_master:'Master', topo_slave:'Slave', topo_standalone:'Standalone',
+    topo_normal:'Normal', topo_abnormal:'Abnormal', topo_ro:'Read-only', topo_rw:'Read-write',
+    topo_node:'Node', topo_role:'Role', topo_status:'Status', topo_rw_mode:'R/W Mode',
+    topo_server_id:'Server ID', topo_mysql_ver:'MySQL Version', topo_gtid:'GTID Mode',
+    topo_master_addr:'Master Address', topo_io:'IO Thread', topo_sql:'SQL Thread',
+    topo_lag:'Replication Lag', topo_lag_unit:'s', topo_err_info:'Error Info',
+    topo_slaves:'Slave Connections', topo_no_slave:'No slave connections', topo_no_data:'No data',
+    topo_querying:'Querying...',
+    inst_count_tpl:'{0} total', db_count_tpl:'{0} databases',
+    found_tpl:'Found {0} records',
+    conn_ok_tpl:'Connected! Found {0} business databases:\n{1}',
+    conn_fail:'Connection failed: ', req_fail:'Request failed: ',
+    save_fail:'Save failed: ', add_fail:'Add failed: ',
+    del_inst_confirm:'Confirm deleting this instance?',
+    del_user_tpl:'Confirm deleting user {0}?',
+    del_grp_tpl:'Confirm deleting group {0}?',
+    need_db_name:'Please enter a database name',
+    sys_db_deny:'System database not allowed: ',
+    need_ip_port:'IP and port are required',
+    need_user_pass:'Username and password are required',
+    need_username:'Username is required',
+    need_grp_name:'Please enter a group name',
+    need_select_inst:'Please select an instance',
+    need_inst_id:'Please enter instance ID',
+    inst_not_found:'Instance ID not found: ',
+    need_select_user:'Please select a user',
+    no_inst_go_add:'Please add a MySQL instance in "Instances" first, then click "SQL Query" to open the editor.',
+    no_db_in_inst:'No business databases in this instance',
+    connecting:'Connecting...',
+  },
+};
+let _lang = localStorage.getItem('dbs_lang') || 'zh';
+function t(key) { return (I18N[_lang] || I18N.zh)[key] || I18N.zh[key] || key; }
+function tc(key, ...args) {
+  let s = t(key);
+  args.forEach((v, i) => { s = s.replace('{' + i + '}', v); });
+  return s;
+}
+function applyLang() {
+  document.title = t('page_title');
+  document.documentElement.lang = _lang === 'zh' ? 'zh-CN' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+  const sel = document.getElementById('lang-btn');
+  if (sel) sel.value = _lang;
+}
+function toggleLang(val) {
+  _lang = val;
+  localStorage.setItem('dbs_lang', _lang);
+  applyLang();
+  // Refresh dynamic panel titles
+  const active = document.querySelector('.menu-item.active[data-panel]');
+  if (active) document.getElementById('page-title').textContent = t(_PANEL_I18N[active.dataset.panel] || active.dataset.panel);
+}
+
 // ══ CSRF ══
 function getCsrf() {
   return document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='))?.split('=')[1] || '';
@@ -691,12 +880,13 @@ async function initAuth() {
 }
 
 // ══ 导航切换 ══
-const panelTitles = {
-  'dashboard': '控制台',
-  'instances': '实例管理',
-  'cluster-query': '集群拓扑角色查询',
-  'users': '用户管理',
-  'groups': '用户组管理',
+const _PANEL_I18N = {
+  'dashboard': 'nav_dashboard',
+  'db-search': 'nav_db_search',
+  'instances': 'nav_instances',
+  'cluster-query': 'nav_topology',
+  'users': 'nav_users',
+  'groups': 'nav_groups',
 };
 
 document.querySelectorAll('.menu-item').forEach(item => {
@@ -705,14 +895,16 @@ document.querySelectorAll('.menu-item').forEach(item => {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     item.classList.add('active');
     const panel = item.dataset.panel;
-    document.getElementById('panel-' + panel).classList.add('active');
-    document.getElementById('page-title').textContent = panelTitles[panel] || '';
+    if (panel) {
+      document.getElementById('panel-' + panel).classList.add('active');
+      document.getElementById('page-title').textContent = t(_PANEL_I18N[panel] || panel);
+    }
   });
 });
 
 // ══ 时钟 ══
 function updateClock() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN');
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString(_lang === 'zh' ? 'zh-CN' : 'en-US');
 }
 setInterval(updateClock, 1000); updateClock();
 
@@ -782,13 +974,13 @@ async function searchDatabases() {
   const ip     = document.getElementById('dbs-ip').value.trim();
   const port   = document.getElementById('dbs-port').value.trim();
 
-  if (!dbName && !(ip && port)) {
-    alert('请输入数据库名称');
+  if (!dbName && !(ip && port) && !_currentUser.is_admin_or_root) {
+    alert(t('need_db_name'));
     return;
   }
 
   if (dbName && !_currentUser.is_admin_or_root && _SYSTEM_DBS.has(dbName.toLowerCase())) {
-    document.getElementById('dbs-error').textContent = `禁止查询系统库：${dbName}`;
+    document.getElementById('dbs-error').textContent = t('sys_db_deny') + dbName;
     document.getElementById('dbs-error').style.display = '';
     document.getElementById('dbs-result-wrap').style.display = 'none';
     document.getElementById('dbs-empty').style.display = 'none';
@@ -816,7 +1008,7 @@ async function searchDatabases() {
     }
 
     const results = data.results || [];
-    document.getElementById('dbs-result-count').textContent = results.length;
+    document.getElementById('dbs-result-count-wrap').textContent = tc('found_tpl', results.length);
 
     if (results.length === 0) {
       document.getElementById('dbs-empty').style.display = '';
@@ -827,8 +1019,8 @@ async function searchDatabases() {
     tbody.innerHTML = '';
     for (const r of results) {
       const envTag = r.env === 'prod'
-        ? '<span class="tag tag-err">生产</span>'
-        : '<span class="tag tag-ok">测试</span>';
+        ? `<span class="tag tag-err">${t('env_prod_tag')}</span>`
+        : `<span class="tag tag-ok">${t('env_test_tag')}</span>`;
       const errCell = r.error
         ? `<td colspan="2" class="text-danger small">${r.error}</td>`
         : `<td>${r.table_count}</td><td>${r.size_mb}</td>`;
@@ -857,7 +1049,7 @@ async function queryArch() {
   const box  = document.getElementById('cq-result');
   box.style.display = 'block';
   box.className = 'result-box';
-  box.innerHTML = '<span class="text-muted">查询中...</span>';
+  box.innerHTML = `<span class="text-muted">${t('topo_querying')}</span>`;
   try {
     const data = await apiGet(`/clusters/query_arch/?ip=${ip}&port=${port}`);
     if (data.error) {
@@ -874,50 +1066,50 @@ async function queryArch() {
 }
 
 function renderTopology(ip, port, nodes) {
-  if (!nodes || !nodes.length) return '<span class="text-muted">无数据</span>';
+  if (!nodes || !nodes.length) return `<span class="text-muted">${t('topo_no_data')}</span>`;
   const n = nodes[0];
   const roleBadge = {
-    master:     '<span class="badge bg-danger">主库 Master</span>',
-    slave:      '<span class="badge bg-primary">从库 Slave</span>',
-    standalone: '<span class="badge bg-secondary">独立节点</span>',
+    master:     `<span class="badge bg-danger">${t('topo_master')}</span>`,
+    slave:      `<span class="badge bg-primary">${t('topo_slave')}</span>`,
+    standalone: `<span class="badge bg-secondary">${t('topo_standalone')}</span>`,
   }[n.role] || '';
   const statusBadge = n.status === 1
-    ? '<span class="badge bg-success">正常</span>'
-    : '<span class="badge bg-warning text-dark">异常</span>';
+    ? `<span class="badge bg-success">${t('topo_normal')}</span>`
+    : `<span class="badge bg-warning text-dark">${t('topo_abnormal')}</span>`;
   const roSwitch = n.read_only
-    ? '<span class="badge bg-secondary">只读</span>'
-    : '<span class="badge bg-success">读写</span>';
+    ? `<span class="badge bg-secondary">${t('topo_ro')}</span>`
+    : `<span class="badge bg-success">${t('topo_rw')}</span>`;
 
   let html = `
     <table class="table table-sm mb-3" style="max-width:600px">
       <tbody>
-        <tr><th style="width:130px">节点</th><td><code>${ip}:${port}</code></td></tr>
-        <tr><th>角色</th><td>${roleBadge}</td></tr>
-        <tr><th>状态</th><td>${statusBadge} ${n.comment ? `<span class="text-danger small">${n.comment}</span>` : ''}</td></tr>
-        <tr><th>读写模式</th><td>${roSwitch}</td></tr>
-        <tr><th>Server ID</th><td>${n.server_id ?? '-'}</td></tr>
-        <tr><th>MySQL 版本</th><td>${n.version || '-'}</td></tr>
-        <tr><th>GTID 模式</th><td>${n.gtid_mode || '-'}</td></tr>`;
+        <tr><th style="width:130px">${t('topo_node')}</th><td><code>${ip}:${port}</code></td></tr>
+        <tr><th>${t('topo_role')}</th><td>${roleBadge}</td></tr>
+        <tr><th>${t('topo_status')}</th><td>${statusBadge} ${n.comment ? `<span class="text-danger small">${n.comment}</span>` : ''}</td></tr>
+        <tr><th>${t('topo_rw_mode')}</th><td>${roSwitch}</td></tr>
+        <tr><th>${t('topo_server_id')}</th><td>${n.server_id ?? '-'}</td></tr>
+        <tr><th>${t('topo_mysql_ver')}</th><td>${n.version || '-'}</td></tr>
+        <tr><th>${t('topo_gtid')}</th><td>${n.gtid_mode || '-'}</td></tr>`;
 
   if (n.role === 'slave') {
     const ioOk  = n.io_running?.toLowerCase()  === 'yes';
     const sqlOk = n.sql_running?.toLowerCase() === 'yes';
     html += `
-        <tr><th>主库地址</th><td><code>${n.master_host}:${n.master_port}</code></td></tr>
-        <tr><th>IO 线程</th><td><span class="badge ${ioOk  ? 'bg-success' : 'bg-danger'}">${n.io_running}</span></td></tr>
-        <tr><th>SQL 线程</th><td><span class="badge ${sqlOk ? 'bg-success' : 'bg-danger'}">${n.sql_running}</span></td></tr>
-        <tr><th>复制延迟</th><td>${n.seconds_behind != null ? n.seconds_behind + ' 秒' : '-'}</td></tr>
-        ${n.last_error ? `<tr><th>错误信息</th><td class="text-danger small">${n.last_error}</td></tr>` : ''}`;
+        <tr><th>${t('topo_master_addr')}</th><td><code>${n.master_host}:${n.master_port}</code></td></tr>
+        <tr><th>${t('topo_io')}</th><td><span class="badge ${ioOk  ? 'bg-success' : 'bg-danger'}">${n.io_running}</span></td></tr>
+        <tr><th>${t('topo_sql')}</th><td><span class="badge ${sqlOk ? 'bg-success' : 'bg-danger'}">${n.sql_running}</span></td></tr>
+        <tr><th>${t('topo_lag')}</th><td>${n.seconds_behind != null ? n.seconds_behind + t('topo_lag_unit') : '-'}</td></tr>
+        ${n.last_error ? `<tr><th>${t('topo_err_info')}</th><td class="text-danger small">${n.last_error}</td></tr>` : ''}`;
   }
 
   if (n.role === 'master' || n.role === 'standalone') {
     const slaves = n.slaves || [];
     if (slaves.length) {
-      html += `<tr><th>从库连接</th><td>${slaves.map(s =>
+      html += `<tr><th>${t('topo_slaves')}</th><td>${slaves.map(s =>
         `<code>${s.host}</code> <span class="text-muted small">(${s.state || s.command})</span>`
       ).join('<br>')}</td></tr>`;
     } else {
-      html += `<tr><th>从库连接</th><td class="text-muted">无从库连接</td></tr>`;
+      html += `<tr><th>${t('topo_slaves')}</th><td class="text-muted">${t('topo_no_slave')}</td></tr>`;
     }
   }
 
@@ -944,12 +1136,12 @@ async function addInstance() {
   const port   = document.getElementById('inst-add-port').value.trim();
   const env    = document.getElementById('inst-add-env').value;
 
-  if (!ip || !port) { alert('IP 和端口为必填项'); return; }
+  if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
     const res = await apiPost('/databases/instances/', { remark: remark || ip, ip, port, env });
-    if (res.error) { alert('添加失败：' + res.error); return; }
-  } catch(e) { alert('请求失败：' + e.message); return; }
+    if (res.error) { alert(t('add_fail') + res.error); return; }
+  } catch(e) { alert(t('req_fail') + e.message); return; }
 
   document.getElementById('inst-remark').value   = '';
   document.getElementById('inst-add-ip').value   = '';
@@ -958,15 +1150,16 @@ async function addInstance() {
 }
 
 async function deleteInstance(id) {
-  if (!confirm('确认删除该实例？')) return;
+  if (!confirm(t('del_inst_confirm'))) return;
   try {
     await apiDelete(`/databases/instances/${id}/`, {});
-  } catch(e) { alert('删除失败：' + e.message); return; }
+  } catch(e) { alert(t('req_fail') + e.message); return; }
   await refreshInstances();
 }
 
 function openEditor(inst, db) {
-  const url = `/sql_editor/?ip=${enc(inst.ip)}&port=${enc(inst.port)}${db ? '&db=' + enc(db) : ''}`;
+  const instId = inst.id + 10000;
+  const url = `/sql_editor/?ip=${enc(inst.ip)}&port=${enc(inst.port)}&inst_id=${instId}${db ? '&db=' + enc(db) : ''}`;
   window.open(url, '_blank');
 }
 
@@ -976,26 +1169,29 @@ function openSqlEditorDirect() {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelector('.menu-item[data-panel="instances"]').classList.add('active');
     document.getElementById('panel-instances').classList.add('active');
-    document.getElementById('page-title').textContent = '实例管理';
-    alert('请先在「实例管理」页面添加一个 MySQL 实例，再点击「查询」按钮打开 SQL 编辑器。');
+    document.getElementById('page-title').textContent = t('nav_instances');
+    alert(t('no_inst_go_add'));
     return;
   }
   openEditor(_instances[0]);
 }
 
-const ENV_BADGE = {
-  prod: '<span class="tag" style="background:#fee2e2;color:#b91c1c">生产</span>',
-  test: '<span class="tag" style="background:#dcfce7;color:#16a34a">测试</span>',
-  dev:  '<span class="tag" style="background:#dbeafe;color:#1d4ed8">开发</span>',
-};
+function getEnvBadge(env) {
+  const map = {
+    prod: `<span class="tag" style="background:#fee2e2;color:#b91c1c">${t('env_prod_tag')}</span>`,
+    test: `<span class="tag" style="background:#dcfce7;color:#16a34a">${t('env_test_tag')}</span>`,
+    dev:  `<span class="tag" style="background:#dbeafe;color:#1d4ed8">${t('env_dev_tag')}</span>`,
+  };
+  return map[env] || env;
+}
 
 function renderInstances() {
   const list = _instances;
   const tbody = document.getElementById('inst-tbody');
-  document.getElementById('inst-count').textContent = `共 ${list.length} 个`;
+  document.getElementById('inst-count').textContent = tc('inst_count_tpl', list.length);
 
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">暂无实例，请先添加</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">${t('no_instances')}</td></tr>`;
     return;
   }
 
@@ -1004,17 +1200,17 @@ function renderInstances() {
       <td><strong>${inst.remark}</strong></td>
       <td class="text-muted">${inst.id + 10000}</td>
       <td>${inst.port}</td>
-      <td>${ENV_BADGE[inst.env] || inst.env}</td>
+      <td>${getEnvBadge(inst.env)}</td>
       <td>
         <button class="btn btn-sm btn-outline-info me-1" onclick="openDbListModal(${inst.id})">
-          <i class="bi bi-database me-1"></i>数据库查询
+          <i class="bi bi-database me-1"></i>${t('db_query_btn')}
         </button>
         <button class="btn btn-sm btn-outline-secondary me-1" onclick="testConn(${inst.id})">
-          <i class="bi bi-plug me-1"></i>测试连接
+          <i class="bi bi-plug me-1"></i>${t('test_conn_btn')}
         </button>
         ${_currentUser && _currentUser.is_admin_or_root ? `
         <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${inst.id})">
-          <i class="bi bi-pencil me-1"></i>编辑
+          <i class="bi bi-pencil me-1"></i>${t('edit_btn')}
         </button>
         <button class="btn btn-sm btn-outline-danger" onclick="deleteInstance(${inst.id})">
           <i class="bi bi-trash"></i>
@@ -1029,9 +1225,9 @@ async function testConn(id) {
   if (!inst) return;
   try {
     const data = await apiGet(`/databases/?ip=${enc(inst.ip)}&port=${enc(inst.port)}`);
-    if (data.error) { alert('连接失败：' + data.message); }
-    else { alert(`连接成功！找到 ${data.db_names.length} 个业务数据库：\n${data.db_names.join(', ')}`); }
-  } catch(e) { alert('请求失败：' + e.message); }
+    if (data.error) { alert(t('conn_fail') + data.message); }
+    else { alert(tc('conn_ok_tpl', data.db_names.length, data.db_names.join(', '))); }
+  } catch(e) { alert(t('req_fail') + e.message); }
 }
 
 function enc(s) { return encodeURIComponent(s); }
@@ -1057,7 +1253,7 @@ async function openDbListModal(id) {
   document.getElementById('dblm-body').innerHTML = `
     <div class="text-center text-muted py-5">
       <i class="bi bi-arrow-clockwise spin" style="font-size:24px"></i>
-      <div class="mt-2">连接中...</div>
+      <div class="mt-2">${t('connecting')}</div>
     </div>`;
 
   if (!_dbListModal) _dbListModal = new bootstrap.Modal(document.getElementById('dbListModal'));
@@ -1084,15 +1280,15 @@ async function openDbListModal(id) {
 
 function renderDbListModal(names) {
   const count = names.length;
-  document.getElementById('dblm-count').textContent = `共 ${count} 个数据库`;
+  document.getElementById('dblm-count').textContent = tc('db_count_tpl', count);
   if (!count) {
     document.getElementById('dblm-body').innerHTML =
-      '<div class="text-center text-muted py-5">该实例暂无业务数据库</div>';
+      `<div class="text-center text-muted py-5">${t('no_db_in_inst')}</div>`;
     return;
   }
   document.getElementById('dblm-body').innerHTML = `
     <table class="table table-hover mb-0 db-list-table">
-      <thead><tr><th style="padding:8px 16px">#</th><th>数据库名</th><th>操作</th></tr></thead>
+      <thead><tr><th style="padding:8px 16px">#</th><th>${t('col_db')}</th><th>${t('col_actions')}</th></tr></thead>
       <tbody>
         ${names.map((n, i) => `
           <tr>
@@ -1101,7 +1297,7 @@ function renderDbListModal(names) {
             <td>
               <button class="btn btn-sm btn-outline-primary py-0 px-2"
                 onclick="openEditorFromDbList('${n}')">
-                <i class="bi bi-terminal me-1"></i>SQL 查询
+                <i class="bi bi-terminal me-1"></i>${t('nav_sql_query')}
               </button>
             </td>
           </tr>
@@ -1143,12 +1339,12 @@ async function saveEdit() {
   const port   = document.getElementById('edit-port').value.trim();
   const env    = document.getElementById('edit-env').value;
 
-  if (!ip || !port) { alert('IP 和端口为必填项'); return; }
+  if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
     const res = await apiPut(`/databases/instances/${id}/`, { remark: remark || ip, ip, port, env });
-    if (res.error) { alert('保存失败：' + res.error); return; }
-  } catch(e) { alert('请求失败：' + e.message); return; }
+    if (res.error) { alert(t('save_fail') + res.error); return; }
+  } catch(e) { alert(t('req_fail') + e.message); return; }
 
   _editModal.hide();
   await refreshInstances();
@@ -1157,7 +1353,9 @@ async function saveEdit() {
 // 实例列表由 initAuth() 完成后调用 refreshInstances() 加载
 
 // ══ 用户管理 ══
-const ROLE_LABELS = {root: 'root', admin: '管理员', query: '查询用户'};
+function getRoleLabel(role) {
+  return {root: t('role_root_lbl'), admin: t('role_admin_lbl'), query: t('role_query_lbl')}[role] || role;
+}
 const ROLE_STYLE = {
   root:  'background:#fee2e2;color:#b91c1c',
   admin: 'background:#fef9c3;color:#854d0e',
@@ -1170,7 +1368,7 @@ async function addUser() {
   const username = document.getElementById('add-user-name').value.trim();
   const password = document.getElementById('add-user-pass').value;
   const role     = document.getElementById('add-user-role').value;
-  if (!username || !password) { alert('用户名和密码不能为空'); return; }
+  if (!username || !password) { alert(t('need_user_pass')); return; }
   try {
     const data = await apiPost('/accounts/api/users/', {username, password, role});
     if (data.error) { alert(data.message); return; }
@@ -1182,7 +1380,7 @@ async function addUser() {
 
 async function loadUsers() {
   const tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">加载中...</td></tr>';
+  tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">${t('loading')}</td></tr>`;
   try {
     const data = await apiGet('/accounts/api/users/');
     if (data.error) { tbody.innerHTML = `<tr><td colspan="5" class="text-danger py-3 text-center">${data.message}</td></tr>`; return; }
@@ -1191,19 +1389,19 @@ async function loadUsers() {
       <tr>
         <td>${u.id}</td>
         <td><strong>${u.username}</strong></td>
-        <td><span class="tag" style="${ROLE_STYLE[u.role]||''}">${ROLE_LABELS[u.role]||u.role}</span></td>
+        <td><span class="tag" style="${ROLE_STYLE[u.role]||''}">${getRoleLabel(u.role)}</span></td>
         <td class="text-muted">${u.date_joined}</td>
         <td>
           ${u.role !== 'root' ? `
             <button class="btn btn-sm btn-outline-primary me-1" onclick="openUserEditModal(${u.id},'${u.username}','${u.role}')">
-              <i class="bi bi-pencil me-1"></i>编辑
+              <i class="bi bi-pencil me-1"></i>${t('edit_btn')}
             </button>
             ${_currentUser && _currentUser.role === 'root' ? `
               <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id},'${u.username}')">
                 <i class="bi bi-trash"></i>
               </button>
             ` : ''}
-          ` : '<span class="text-muted small">超级用户</span>'}
+          ` : `<span class="text-muted small">${t('superuser')}</span>`}
         </td>
       </tr>
     `).join('');
@@ -1226,7 +1424,7 @@ async function saveUserEdit() {
   const username = document.getElementById('edit-user-name').value.trim();
   const role     = document.getElementById('edit-user-role').value;
   const password = document.getElementById('edit-user-pass').value;
-  if (!username) { alert('用户名不能为空'); return; }
+  if (!username) { alert(t('need_username')); return; }
   const body = {username, role};
   if (password) body.password = password;
   try {
@@ -1238,7 +1436,7 @@ async function saveUserEdit() {
 }
 
 async function deleteUser(id, username) {
-  if (!confirm(`确认删除用户 ${username}？`)) return;
+  if (!confirm(tc('del_user_tpl', username))) return;
   try {
     const data = await apiDelete(`/accounts/api/users/${id}/`);
     if (data.error) { alert(data.message); return; }
@@ -1252,11 +1450,11 @@ let _currentGrpId = null;
 
 async function loadGroups() {
   const container = document.getElementById('groups-container');
-  container.innerHTML = '<div class="text-muted">加载中...</div>';
+  container.innerHTML = `<div class="text-muted">${t('loading')}</div>`;
   try {
     const data = await apiGet('/accounts/api/groups/');
     if (data.error) { container.innerHTML = `<div class="text-danger">${data.message}</div>`; return; }
-    if (!data.groups.length) { container.innerHTML = '<div class="text-muted">暂无用户组</div>'; return; }
+    if (!data.groups.length) { container.innerHTML = `<div class="text-muted">${t('no_groups')}</div>`; return; }
     container.innerHTML = data.groups.map(g => `
       <div class="card mb-3">
         <div class="card-body py-3">
@@ -1265,28 +1463,29 @@ async function loadGroups() {
             <span class="text-muted ms-2 small">${g.description || ''}</span>
             <span class="ms-auto">
               <span class="badge bg-light text-dark border me-1">
-                <i class="bi bi-server me-1"></i>${g.instances.length} 实例
+                <i class="bi bi-server me-1"></i>${g.instances.length} ${t('nav_instances')}
               </span>
               <span class="badge bg-light text-dark border me-2">
-                <i class="bi bi-people me-1"></i>${g.members.length} 成员
+                <i class="bi bi-people me-1"></i>${g.members.length} ${t('member_list_h')}
               </span>
               <button class="btn btn-sm btn-outline-primary me-1" onclick="openGroupModal(${g.id})">
-                <i class="bi bi-pencil me-1"></i>管理
+                <i class="bi bi-pencil me-1"></i>${t('edit_btn')}
               </button>
               ${_currentUser && _currentUser.role === 'root' ? `
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup(${g.id},'${g.name}')">
                   <i class="bi bi-trash"></i>
                 </button>
               ` : ''}
+
             </span>
           </div>
           <div class="small text-muted">
-            <strong>实例：</strong>
-            ${g.instances.map(i => `<code class="me-2">${i.ip}:${i.port}</code>`).join('') || '（空）'}
+            <strong>${t('inst_list_h')}：</strong>
+            ${g.instances.map(i => `<code class="me-2">${i.ip}:${i.port}</code>`).join('') || '（-）'}
           </div>
           <div class="small text-muted mt-1">
-            <strong>成员：</strong>
-            ${g.members.map(m => `<span class="me-2">${m.username}</span>`).join('') || '（空）'}
+            <strong>${t('member_list_h')}：</strong>
+            ${g.members.map(m => `<span class="me-2">${m.username}</span>`).join('') || '（-）'}
           </div>
         </div>
       </div>
@@ -1297,7 +1496,7 @@ async function loadGroups() {
 async function createGroup() {
   const name = document.getElementById('grp-name').value.trim();
   const desc = document.getElementById('grp-desc').value.trim();
-  if (!name) { alert('请填写组名'); return; }
+  if (!name) { alert(t('need_grp_name')); return; }
   try {
     const data = await apiPost('/accounts/api/groups/', {name, description: desc});
     if (data.error) { alert(data.message); return; }
@@ -1308,7 +1507,7 @@ async function createGroup() {
 }
 
 async function deleteGroup(id, name) {
-  if (!confirm(`确认删除用户组 ${name}？`)) return;
+  if (!confirm(tc('del_grp_tpl', name))) return;
   try {
     const data = await apiDelete(`/accounts/api/groups/${id}/`);
     if (data.error) { alert(data.message); return; }
@@ -1321,7 +1520,7 @@ async function deleteGroup(id, name) {
 function _renderInstSelect(groupInstances) {
   const added = new Set(groupInstances.map(i => `${i.ip}:${i.port}`));
   const sel = document.getElementById('gm-inst-select');
-  sel.innerHTML = '<option value="">-- 选择实例 --</option>' +
+  sel.innerHTML = `<option value="">${t('select_inst')}</option>` +
     _instances.filter(r => !added.has(`${r.ip}:${r.port}`)).map(r =>
       `<option value="${r.ip}:${r.port}">${r.remark}（${r.ip}:${r.port}）</option>`
     ).join('');
@@ -1343,7 +1542,7 @@ async function openGroupModal(groupId) {
     const sel = document.getElementById('gm-member-select');
     const memberIds = new Set(g.members.map(m => m.id));
     const usersData = _allUsers.length ? _allUsers : (await apiGet('/accounts/api/users/')).users;
-    sel.innerHTML = '<option value="">-- 选择用户 --</option>' +
+    sel.innerHTML = `<option value="">${t('select_user')}</option>` +
       usersData.filter(u => !memberIds.has(u.id)).map(u =>
         `<option value="${u.id}">${u.username} (${u.role})</option>`
       ).join('');
@@ -1374,7 +1573,7 @@ function renderGmInstances(instances) {
           </td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="4" class="text-muted text-center">暂无实例</td></tr>';
+    : `<tr><td colspan="4" class="text-muted text-center">${t('no_inst_short')}</td></tr>`;
 }
 
 function renderGmMembers(members) {
@@ -1391,12 +1590,12 @@ function renderGmMembers(members) {
           </td>
         </tr>
       `).join('')
-    : '<tr><td colspan="2" class="text-muted text-center">暂无成员</td></tr>';
+    : `<tr><td colspan="2" class="text-muted text-center">${t('no_members')}</td></tr>`;
 }
 
 async function addGroupInstance() {
   const val = document.getElementById('gm-inst-select').value;
-  if (!val) { alert('请选择实例'); return; }
+  if (!val) { alert(t('need_select_inst')); return; }
   const [ip, port] = val.split(':');
   try {
     const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/instances/`, {ip, port: parseInt(port)});
@@ -1408,10 +1607,10 @@ async function addGroupInstance() {
 
 async function addGroupInstanceById() {
   const raw = document.getElementById('gm-inst-id-input').value.trim();
-  if (!raw) { alert('请输入实例ID'); return; }
+  if (!raw) { alert(t('need_inst_id')); return; }
   const displayId = parseInt(raw);
   const inst = _instances.find(r => r.id + 10000 === displayId);
-  if (!inst) { alert(`未找到实例ID：${displayId}`); return; }
+  if (!inst) { alert(t('inst_not_found') + displayId); return; }
   try {
     const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/instances/`, {ip: inst.ip, port: inst.port});
     if (data.error) { alert(data.message); return; }
@@ -1430,7 +1629,7 @@ async function removeGroupInstance(ip, port) {
 
 async function addGroupMember() {
   const userId = document.getElementById('gm-member-select').value;
-  if (!userId) { alert('请选择用户'); return; }
+  if (!userId) { alert(t('need_select_user')); return; }
   try {
     const data = await apiPost(`/accounts/api/groups/${_currentGrpId}/members/`, {user_id: parseInt(userId)});
     if (data.error) { alert(data.message); return; }
@@ -1456,7 +1655,7 @@ async function refreshGroupModal() {
   // 刷新用户列表下拉
   const sel = document.getElementById('gm-member-select');
   const memberIds = new Set(g.members.map(m => m.id));
-  sel.innerHTML = '<option value="">-- 选择用户 --</option>' +
+  sel.innerHTML = `<option value="">${t('select_user')}</option>` +
     _allUsers.filter(u => !memberIds.has(u.id)).map(u =>
       `<option value="${u.id}">${u.username} (${u.role})</option>`
     ).join('');
@@ -1474,6 +1673,7 @@ document.querySelectorAll('.menu-item[data-panel]').forEach(item => {
 });
 
 // ══ 启动 ══
+applyLang();
 initAuth();
 </script>
 </body>
