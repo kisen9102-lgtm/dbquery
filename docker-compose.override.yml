@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: dbs_admin
-      POSTGRES_PASSWORD: dbs_password
+      POSTGRES_PASSWORD: Dbs@Admin2026
       POSTGRES_DB: testdb
     ports:
       - "15432:5432"
