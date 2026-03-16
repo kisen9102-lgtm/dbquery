@@ -109,6 +109,11 @@ class GetConnectorTest(TestCase):
         with self.assertRaises(ValueError):
             get_connector('oracle', '127.0.0.1', 1521, 'u', 'p')
 
+    def test_redis_type_returns_redis_connector(self):
+        from common.connector import get_connector, RedisConnector
+        c = get_connector('redis', '127.0.0.1', 6379, '', 'pass')
+        self.assertIsInstance(c, RedisConnector)
+
 
 class PostgreSQLConnectorUnitTest(TestCase):
     """PostgreSQLConnector 单元测试：mock _connect，无需运行容器。"""
@@ -158,6 +163,91 @@ class PostgreSQLConnectorUnitTest(TestCase):
         self.assertIn('testdb_public', db_names)
         self.assertIn('testdb_sales', db_names)
         self.assertEqual(result[0]['table_count'], 3)
+
+
+class RedisConnectorUnitTest(TestCase):
+    """RedisConnector unit tests — mock redis-py."""
+
+    def _make_connector(self):
+        from common.connector import RedisConnector
+        return RedisConnector('127.0.0.1', 16379, '', 'testpass')
+
+    def test_get_databases_returns_fixed_16_dbs(self):
+        c = self._make_connector()
+        dbs = c.get_databases()
+        self.assertEqual(dbs, [f'db{i}' for i in range(16)])
+        self.assertEqual(len(dbs), 16)
+
+    def test_get_tables_returns_empty(self):
+        c = self._make_connector()
+        self.assertEqual(c.get_tables('db0'), [])
+
+    def test_search_databases_returns_empty(self):
+        c = self._make_connector()
+        self.assertEqual(c.search_databases('anything'), [])
+        self.assertEqual(c.search_databases(''), [])
+
+    def test_execute_sql_rejects_write_command(self):
+        c = self._make_connector()
+        with self.assertRaises(PermissionError):
+            c.execute_sql('DEL mykey', 'db0')
+
+    def test_execute_sql_rejects_invalid_db_index(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c.execute_sql('GET foo', 'db99')
+        with self.assertRaises(ValueError):
+            c.execute_sql('GET foo', 'notadb')
+
+    @patch('common.connector.redis')
+    def test_execute_sql_get_returns_resultset(self, mock_redis_module):
+        mock_client = MagicMock()
+        mock_client.execute_command.return_value = 'hello'
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, elapsed = c.execute_sql('GET mykey', 'db0')
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['type'], 'resultset')
+        self.assertEqual(results[0]['columns'], ['result'])
+        self.assertEqual(results[0]['rows'], [['hello']])
+        self.assertIsInstance(elapsed, float)
+
+    @patch('common.connector.redis')
+    def test_execute_sql_keys_returns_list_format(self, mock_redis_module):
+        mock_client = MagicMock()
+        mock_client.execute_command.return_value = ['key1', 'key2', 'key3']
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, _ = c.execute_sql('KEYS *', 'db0')
+
+        self.assertEqual(results[0]['columns'], ['index', 'value'])
+        self.assertEqual(len(results[0]['rows']), 3)
+
+    @patch('common.connector.redis')
+    def test_execute_sql_hgetall_returns_dict_format(self, mock_redis_module):
+        mock_client = MagicMock()
+        mock_client.execute_command.return_value = {'field1': 'val1', 'field2': 'val2'}
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, _ = c.execute_sql('HGETALL myhash', 'db0')
+
+        self.assertEqual(results[0]['columns'], ['field', 'value'])
+        self.assertEqual(len(results[0]['rows']), 2)
+
+    @patch('common.connector.redis')
+    def test_execute_sql_none_result(self, mock_redis_module):
+        mock_client = MagicMock()
+        mock_client.execute_command.return_value = None
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, _ = c.execute_sql('GET nosuchkey', 'db0')
+
+        self.assertEqual(results[0]['rows'], [['(nil)']])
 
 
 import unittest

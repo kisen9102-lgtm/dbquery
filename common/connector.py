@@ -5,6 +5,8 @@
 """
 import time
 from abc import ABC, abstractmethod
+import shlex
+import redis
 
 import pymysql
 import pymysql.cursors
@@ -384,11 +386,100 @@ class PostgreSQLConnector(BaseConnector):
         return result
 
 
+SAFE_REDIS_COMMANDS = frozenset({
+    'get', 'mget', 'keys', 'scan', 'type', 'ttl', 'pttl', 'exists',
+    'strlen', 'getrange', 'info', 'dbsize', 'time',
+    'hget', 'hgetall', 'hmget', 'hkeys', 'hvals', 'hlen',
+    'lrange', 'llen', 'lindex',
+    'scard', 'smembers', 'srandmember', 'sismember',
+    'zrange', 'zrangebyscore', 'zrevrange', 'zcard', 'zscore', 'zrank',
+    'object', 'dump',
+})
+
+
+class RedisConnector(BaseConnector):
+
+    def __init__(self, host, port, user, password):
+        self.host = host
+        self.port = port
+        self.user = user        # Redis 6+ ACL username; empty = no username auth
+        self.password = password  # AUTH password; empty = no auth
+
+    def get_databases(self) -> list:
+        return [f'db{i}' for i in range(16)]
+
+    def get_tables(self, db: str) -> list:
+        return []
+
+    def execute_sql(self, command: str, db: str = 'db0') -> tuple:
+        # Parse db index
+        db = (db or 'db0').strip()
+        if not db.startswith('db') or not db[2:].isdigit():
+            raise ValueError(f'无效的 Redis 库编号: {db}')
+        db_index = int(db[2:])
+        if db_index < 0 or db_index > 15:
+            raise ValueError(f'无效的 Redis 库编号: {db}（有效范围 db0–db15）')
+
+        # Parse command tokens
+        try:
+            tokens = shlex.split(command.strip())
+        except ValueError as e:
+            raise ValueError(f'命令解析失败: {e}')
+        if not tokens:
+            raise ValueError('命令不能为空')
+
+        # Whitelist check
+        cmd_name = tokens[0].lower()
+        if cmd_name not in SAFE_REDIS_COMMANDS:
+            raise PermissionError(f'不允许的命令: {tokens[0]}')
+
+        t0 = time.time()
+        client = redis.Redis(
+            host=self.host, port=self.port,
+            db=db_index,
+            password=self.password or None,
+            username=self.user or None,
+            socket_connect_timeout=5,
+            decode_responses=True,
+        )
+        try:
+            result = client.execute_command(*tokens)
+        finally:
+            client.close()
+        elapsed = round((time.time() - t0) * 1000, 1)
+
+        columns, rows = self._format_result(command, result)
+        return [{
+            'type': 'resultset',
+            'columns': columns,
+            'rows': rows,
+            'row_count': len(rows),
+            'limited': False,
+            'sql': command,
+        }], elapsed
+
+    @staticmethod
+    def _format_result(command, result):
+        if result is None:
+            return ['result'], [['(nil)']]
+        if isinstance(result, dict):
+            return ['field', 'value'], [[k, str(v)] for k, v in result.items()]
+        if isinstance(result, list):
+            return ['index', 'value'], [[i, str(v)] for i, v in enumerate(result)]
+        return ['result'], [[str(result)]]
+
+    def search_databases(self, db_name: str = '') -> list:
+        return []
+
+
 def get_connector(db_type: str, host: str, port: int,
-                  user: str, password: str) -> BaseConnector:
+                  user: str, password: str,
+                  auth_source: str = '') -> BaseConnector:
     """工厂函数：按 db_type 返回对应连接器。未知类型抛 ValueError。"""
     if db_type in ('mysql', 'tidb'):
         return MySQLConnector(host, port, user, password)
     if db_type == 'postgresql':
         return PostgreSQLConnector(host, port, user, password)
+    if db_type == 'redis':
+        return RedisConnector(host, port, user, password)
     raise ValueError(f'不支持的数据库类型: {db_type}')
