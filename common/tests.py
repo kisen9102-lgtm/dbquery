@@ -131,11 +131,13 @@ class PostgreSQLConnectorUnitTest(TestCase):
 
     def test_get_databases_returns_list(self):
         c = self._make_connector()
-        conn, _ = self._mock_conn(fetchall_result=[('testdb',), ('myapp',)])
-        with patch.object(c, '_connect', return_value=conn):
+        # 第一次调用返回库名列表，后续调用返回 schema 列表
+        conn_dbs, _ = self._mock_conn(fetchall_result=[('testdb',)])
+        conn_schemas, _ = self._mock_conn(fetchall_result=[('public',), ('sales',)])
+        with patch.object(c, '_connect', side_effect=[conn_dbs, conn_schemas]):
             result = c.get_databases()
         self.assertIn('testdb_public', result)
-        self.assertIn('myapp_public', result)
+        self.assertIn('testdb_sales', result)
 
     def test_search_databases_single_system_db_returns_empty(self):
         from common.connector import PG_SYSTEM_DBS
