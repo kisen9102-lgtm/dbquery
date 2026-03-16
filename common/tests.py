@@ -134,8 +134,8 @@ class PostgreSQLConnectorUnitTest(TestCase):
         conn, _ = self._mock_conn(fetchall_result=[('testdb',), ('myapp',)])
         with patch.object(c, '_connect', return_value=conn):
             result = c.get_databases()
-        self.assertIn('testdb', result)
-        self.assertIn('myapp', result)
+        self.assertIn('testdb_public', result)
+        self.assertIn('myapp_public', result)
 
     def test_search_databases_single_system_db_returns_empty(self):
         from common.connector import PG_SYSTEM_DBS
@@ -153,6 +153,7 @@ class PostgreSQLConnectorUnitTest(TestCase):
             result = c.search_databases('')
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]['table_count'], -1)  # _search_all 不统计表数
+        self.assertEqual(result[0]['db_name'], 'testdb_public')
 
 
 import unittest
@@ -162,7 +163,7 @@ try:
     import psycopg2
     psycopg2.connect(
         host='127.0.0.1', port=15432,
-        user='dbs_admin', password='dbs_password',
+        user='dbs_admin', password='Dbs@Admin2026',
         dbname='testdb', connect_timeout=2,
     ).close()
     PG_AVAILABLE = True
@@ -176,25 +177,28 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
 
     def _make_connector(self):
         from common.connector import PostgreSQLConnector
-        return PostgreSQLConnector('127.0.0.1', 15432, 'dbs_admin', 'dbs_password')
+        return PostgreSQLConnector('127.0.0.1', 15432, 'dbs_admin', 'Dbs@Admin2026')
 
     def test_get_databases_returns_testdb(self):
         c = self._make_connector()
         dbs = c.get_databases()
-        self.assertIn('testdb', dbs)
+        self.assertIn('testdb_public', dbs)
         # 系统库不应出现
         self.assertNotIn('postgres', dbs)
         self.assertNotIn('template0', dbs)
 
-    def test_get_tables_empty_on_fresh_db(self):
+    def test_get_tables_returns_list(self):
         c = self._make_connector()
-        tables = c.get_tables('testdb')
-        # 新建的 testdb 无用户表
+        tables = c.get_tables('testdb_public')
         self.assertIsInstance(tables, list)
+        table_names = [t['TABLE_NAME'] for t in tables]
+        self.assertIn('users', table_names)
+        self.assertIn('products', table_names)
+        self.assertIn('orders', table_names)
 
     def test_execute_sql_select_version(self):
         c = self._make_connector()
-        results, elapsed = c.execute_sql('SELECT version()', 'testdb')
+        results, elapsed = c.execute_sql('SELECT version()', 'testdb_public')
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['type'], 'resultset')
         self.assertIn('PostgreSQL', results[0]['rows'][0][0])
@@ -203,7 +207,7 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
     def test_execute_sql_multi_statement(self):
         c = self._make_connector()
         sql = 'SELECT 1 AS a; SELECT 2 AS b'
-        results, _ = c.execute_sql(sql, 'testdb')
+        results, _ = c.execute_sql(sql, 'testdb_public')
         self.assertEqual(len(results), 2)
         self.assertEqual(results[0]['rows'][0][0], 1)
         self.assertEqual(results[1]['rows'][0][0], 2)
@@ -212,7 +216,7 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
         c = self._make_connector()
         result = c.search_databases('testdb')
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['db_name'], 'testdb')
+        self.assertEqual(result[0]['db_name'], 'testdb_public')
 
     def test_search_databases_not_found(self):
         c = self._make_connector()
@@ -224,4 +228,4 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
         result = c.search_databases('')
         self.assertIsInstance(result, list)
         db_names = [r['db_name'] for r in result]
-        self.assertIn('testdb', db_names)
+        self.assertIn('testdb_public', db_names)

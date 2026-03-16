@@ -186,6 +186,18 @@ class PostgreSQLConnector(BaseConnector):
             dbname=db, connect_timeout=5,
         )
 
+    @staticmethod
+    def _split_db_schema(db_schema: str) -> tuple:
+        """
+        将 'dbname_schema' 拆分为 (dbname, schema)。
+        使用从右侧第一个 '_' 分割，保证含下划线的库名也能正确处理。
+        若无 '_' 则 schema 默认为 'public'。
+        """
+        if '_' in db_schema:
+            idx = db_schema.rfind('_')
+            return db_schema[:idx], db_schema[idx + 1:]
+        return db_schema, 'public'
+
     def get_databases(self) -> list:
         conn = self._connect()
         try:
@@ -196,13 +208,15 @@ class PostgreSQLConnector(BaseConnector):
                     " ORDER BY datname",
                     (tuple(PG_SYSTEM_DBS),)
                 )
-                return [r[0] for r in cur.fetchall()]
+                # 格式：dbname_schema，当前只支持 public schema
+                return [f"{r[0]}_public" for r in cur.fetchall()]
         finally:
             conn.close()
 
     def get_tables(self, db: str) -> list:
         import psycopg2.extras
-        conn = self._connect(db)
+        dbname, schema = self._split_db_schema(db)
+        conn = self._connect(dbname)
         try:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 cur.execute(
@@ -221,9 +235,10 @@ class PostgreSQLConnector(BaseConnector):
                     FROM information_schema.tables t
                     LEFT JOIN pg_stat_user_tables s
                       ON s.relname = t.table_name AND s.schemaname = t.table_schema
-                    WHERE t.table_schema = 'public'
+                    WHERE t.table_schema = %s
                     ORDER BY t.table_type, t.table_name
-                    """
+                    """,
+                    (schema,)
                 )
                 return [dict(r) for r in cur.fetchall()]
         finally:
@@ -232,7 +247,8 @@ class PostgreSQLConnector(BaseConnector):
     def execute_sql(self, sql: str, db: str = '') -> tuple:
         import psycopg2
         import psycopg2.extras
-        conn = self._connect(db or 'postgres')
+        dbname, _ = self._split_db_schema(db) if db else ('postgres', 'public')
+        conn = self._connect(dbname)
         conn.autocommit = False
         results = []
         t0 = time.time()
@@ -272,8 +288,11 @@ class PostgreSQLConnector(BaseConnector):
         return self._search_all()
 
     def _search_databases_single(self, db_name: str) -> list:
-        if db_name in PG_SYSTEM_DBS:
+        # 支持搜索词为 'testdb' 或 'testdb_public' 两种形式
+        real_db, schema = self._split_db_schema(db_name)
+        if real_db in PG_SYSTEM_DBS:
             return []
+        db_name = real_db  # 后续用真实库名查询
         conn = self._connect()
         try:
             with conn.cursor() as cur:
@@ -301,7 +320,7 @@ class PostgreSQLConnector(BaseConnector):
         finally:
             conn2.close()
 
-        return [{'db_name': db_name, 'table_count': table_count, 'size_mb': size_mb}]
+        return [{'db_name': f"{db_name}_public", 'table_count': table_count, 'size_mb': size_mb}]
 
     def _search_all(self) -> list:
         conn = self._connect()
@@ -318,7 +337,7 @@ class PostgreSQLConnector(BaseConnector):
         finally:
             conn.close()
         # table_count=-1 表示"未统计"，前端显示 '-'
-        return [{'db_name': r[0], 'table_count': -1, 'size_mb': float(r[1] or 0)}
+        return [{'db_name': f"{r[0]}_public", 'table_count': -1, 'size_mb': float(r[1] or 0)}
                 for r in rows]
 
 
