@@ -1,36 +1,14 @@
 services:
 
-  mysql:
-    image: mysql:8.0
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Root@2026}
-      MYSQL_DATABASE:      ${DBS_DB_NAME:-ops_db}
-      MYSQL_USER:          ${DBS_DB_USER:-ops_user}
-      MYSQL_PASSWORD:      ${DBS_DB_PASSWORD:-Ops@2026}
-    volumes:
-      - mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Root@2026}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
   app:
     build: .
+    image: dbquery-app:1.1
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
       - .env
-    depends_on:
-      mysql:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./logs:/app/logs
-
-volumes:
-  mysql_data:

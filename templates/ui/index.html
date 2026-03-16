@@ -922,6 +922,11 @@ function showResult(elId, data, isError) {
 
 async function apiGet(url) {
   const r = await fetch(url, {credentials: 'same-origin'});
+  if (!r.ok) {
+    let msg;
+    try { msg = (await r.json()).detail || (await r.text()); } catch { msg = `HTTP ${r.status}`; }
+    throw new Error(msg || `HTTP ${r.status}`);
+  }
   return r.json();
 }
 

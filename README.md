@@ -6,7 +6,7 @@
 
 ## 中文说明
 
-基于 Django 4.2 + Django REST Framework 构建的 MySQL 数据库运维查询平台，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
+基于 Django 4.2 + Django REST Framework 构建的数据库运维查询平台，支持 MySQL 和 TiDB，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
 
 ### 功能概览
 
@@ -14,11 +14,18 @@
 |------|------|
 | 数据库查询 | 按数据库名或 IP+端口跨实例检索数据库信息 |
 | SQL 查询 | 在线 SQL 编辑器，支持多语句执行、对象浏览器、结果导出 |
-| 实例管理 | 注册 / 编辑 / 删除 MySQL 实例（admin / root 可操作） |
+| 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB 实例（admin / root 可操作） |
 | 集群拓扑查询 | 查询指定节点的主从角色与复制状态 |
 | 用户管理 | 创建 / 编辑用户，支持三种角色（root / admin / query） |
 | 用户组管理 | 管理实例访问权限组，控制 query 用户可见的实例范围 |
 | 多语言 | 界面支持中文 / English 切换，偏好持久化到浏览器本地存储 |
+
+### 支持的数据库类型
+
+| 类型 | 说明 |
+|------|------|
+| MySQL 8.0 | 完整支持 |
+| TiDB | 兼容 MySQL 协议，完整支持 |
 
 ### 角色权限
 
@@ -31,7 +38,7 @@
 ### 技术栈
 
 - **后端**：Python 3.10+、Django 4.2、Django REST Framework
-- **数据库**：MySQL 8.0（业务数据库）+ SQLite（Django 框架元数据）
+- **元数据库**：外部 MySQL 8.0（由用户自行提供）
 - **前端**：Bootstrap 5.3、Bootstrap Icons、CodeMirror 5（单页应用，无需构建）
 - **认证**：Session 认证 + CSRF 保护
 
@@ -50,15 +57,27 @@
 ├── docker-compose.yml    # 一键启动编排
 ├── docker-entrypoint.sh  # 容器启动脚本（migrate + gunicorn）
 ├── .env.docker.example   # Docker 环境变量模板
-├── requirements.txt      # Python 依赖
-└── restart.sh            # 本地快速重启脚本
+└── requirements.txt      # Python 依赖
 ```
 
 ### 部署方式一：Docker Compose（推荐）
 
-> 无需本地安装 Python 或 MySQL，一条命令完成启动。
+> **前提**：需要一个外部 MySQL 8.0 实例作为平台元数据库（存储实例信息、用户等）。
 
-**1. 准备环境变量**
+**1. 准备外部 MySQL**
+
+在 MySQL 上创建数据库和用户：
+
+```sql
+CREATE DATABASE ops_db CHARACTER SET utf8mb4;
+CREATE USER 'ops_user'@'%' IDENTIFIED BY 'your-password';
+GRANT ALL PRIVILEGES ON ops_db.* TO 'ops_user'@'%';
+FLUSH PRIVILEGES;
+```
+
+> 若 MySQL 在同一宿主机，需将 `bind-address` 改为 `0.0.0.0` 并重启 MySQL。
+
+**2. 准备环境变量**
 
 ```bash
 cp .env.docker.example .env
@@ -68,15 +87,14 @@ cp .env.docker.example .env
 `.env` 关键配置项：
 
 ```ini
-# 平台自带 MySQL 容器，HOST 固定为 mysql
-DBS_DB_HOST=mysql
+# 外部 MySQL（Docker 部署时宿主机 MySQL 填 host.docker.internal）
+DBS_DB_HOST=host.docker.internal
 DBS_DB_PORT=3306
 DBS_DB_USER=ops_user
-DBS_DB_PASSWORD=Ops@2026
+DBS_DB_PASSWORD=your-ops-password
 DBS_DB_NAME=ops_db
-MYSQL_ROOT_PASSWORD=Root@2026
 
-# 被查询的目标 MySQL 实例登录账号
+# 被查询的目标 MySQL / TiDB 实例登录账号
 QUERY_DEFAULT_ACCOUNT=dbs_admin
 QUERY_DEFAULT_PASSWORD=your-dbs-admin-password
 
@@ -85,12 +103,12 @@ DEBUG=False
 ALLOWED_HOSTS=*
 ```
 
-**2. 构建并启动**
+**3. 启动服务**
 
 方式 A：直接拉取预构建镜像（推荐，无需本地编译）
 
 ```bash
-# docker-compose.yml 中将 build: . 替换为：
+# 修改 docker-compose.yml，将 build: . 替换为：
 # image: ghcr.io/kisen9102-lgtm/dbquery:1.1
 docker-compose up -d
 ```
@@ -107,7 +125,7 @@ docker-compose up -d --build
 - 创建超级管理员（`dbsroot / Dbs@Root2026`）
 - 使用 gunicorn 启动服务（4 workers）
 
-**3. 访问**
+**4. 访问**
 
 ```
 http://localhost:8000
@@ -121,9 +139,6 @@ docker-compose logs -f app
 
 # 停止服务
 docker-compose down
-
-# 停止并删除数据卷（清空数据库）
-docker-compose down -v
 
 # 重新构建镜像
 docker-compose up -d --build
@@ -144,7 +159,7 @@ pip install -r requirements.txt
 **2. 配置环境变量**
 
 ```bash
-cp .env.example .env
+cp .env.docker.example .env
 # 编辑 .env，填写数据库连接信息
 ```
 
@@ -156,7 +171,7 @@ python3 manage.py create_dbsroot
 # 默认账号：dbsroot / Dbs@Root2026
 ```
 
-**4. 在目标 MySQL 实例上创建查询账号**
+**4. 在目标 MySQL / TiDB 实例上创建查询账号**
 
 ```sql
 CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
@@ -183,7 +198,7 @@ python3 manage.py runserver 0.0.0.0:8000
 
 ## English
 
-A MySQL database operations and query platform built with Django 4.2 + Django REST Framework. Features cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
+A database operations and query platform built with Django 4.2 + Django REST Framework. Supports MySQL and TiDB with cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
 
 ### Features
 
@@ -191,11 +206,18 @@ A MySQL database operations and query platform built with Django 4.2 + Django RE
 |--------|-------------|
 | DB Search | Search databases by name or IP+port across all registered instances |
 | SQL Query | Online SQL editor with multi-statement execution, object browser, and CSV export |
-| Instance Management | Register / edit / delete MySQL instances (admin / root only) |
+| Instance Management | Register / edit / delete MySQL / TiDB instances (admin / root only) |
 | Cluster Topology | Query master/slave role and replication status for any node |
 | User Management | Create / edit users with three roles: root / admin / query |
 | Group Management | Manage instance access groups to control which instances query users can see |
 | i18n | UI language switches between Chinese and English; preference saved in localStorage |
+
+### Supported Database Types
+
+| Type | Notes |
+|------|-------|
+| MySQL 8.0 | Fully supported |
+| TiDB | MySQL-protocol compatible, fully supported |
 
 ### Roles & Permissions
 
@@ -208,7 +230,7 @@ A MySQL database operations and query platform built with Django 4.2 + Django RE
 ### Tech Stack
 
 - **Backend**: Python 3.10+, Django 4.2, Django REST Framework
-- **Database**: MySQL 8.0 (business data) + SQLite (Django metadata)
+- **Metadata DB**: External MySQL 8.0 (user-provided)
 - **Frontend**: Bootstrap 5.3, Bootstrap Icons, CodeMirror 5 (SPA, no build step)
 - **Auth**: Session authentication + CSRF protection
 
@@ -227,15 +249,25 @@ A MySQL database operations and query platform built with Django 4.2 + Django RE
 ├── docker-compose.yml    # One-command orchestration
 ├── docker-entrypoint.sh  # Container startup (migrate + gunicorn)
 ├── .env.docker.example   # Docker environment template
-├── requirements.txt      # Python dependencies
-└── restart.sh            # Local quick-restart script
+└── requirements.txt      # Python dependencies
 ```
 
 ### Option 1: Docker Compose (Recommended)
 
-> No local Python or MySQL installation required.
+> **Prerequisite**: An external MySQL 8.0 instance is required as the platform metadata database.
 
-**1. Prepare environment variables**
+**1. Prepare external MySQL**
+
+```sql
+CREATE DATABASE ops_db CHARACTER SET utf8mb4;
+CREATE USER 'ops_user'@'%' IDENTIFIED BY 'your-password';
+GRANT ALL PRIVILEGES ON ops_db.* TO 'ops_user'@'%';
+FLUSH PRIVILEGES;
+```
+
+> If MySQL is on the same host, set `bind-address = 0.0.0.0` in `mysqld.cnf` and restart MySQL.
+
+**2. Prepare environment variables**
 
 ```bash
 cp .env.docker.example .env
@@ -245,15 +277,14 @@ cp .env.docker.example .env
 Key `.env` settings:
 
 ```ini
-# MySQL is provided by docker-compose; HOST must be "mysql"
-DBS_DB_HOST=mysql
+# External MySQL (use host.docker.internal if MySQL is on the same host)
+DBS_DB_HOST=host.docker.internal
 DBS_DB_PORT=3306
 DBS_DB_USER=ops_user
-DBS_DB_PASSWORD=Ops@2026
+DBS_DB_PASSWORD=your-ops-password
 DBS_DB_NAME=ops_db
-MYSQL_ROOT_PASSWORD=Root@2026
 
-# Credentials used to connect to the target MySQL instances being queried
+# Credentials used to connect to the target MySQL / TiDB instances being queried
 QUERY_DEFAULT_ACCOUNT=dbs_admin
 QUERY_DEFAULT_PASSWORD=your-dbs-admin-password
 
@@ -262,7 +293,7 @@ DEBUG=False
 ALLOWED_HOSTS=*
 ```
 
-**2. Build and start**
+**3. Start services**
 
 Option A: Pull the pre-built image (recommended, no local build required)
 
@@ -284,7 +315,7 @@ On first start the container will automatically:
 - Create the superuser (`dbsroot / Dbs@Root2026`)
 - Start gunicorn with 4 workers
 
-**3. Open**
+**4. Open**
 
 ```
 http://localhost:8000
@@ -298,9 +329,6 @@ docker-compose logs -f app
 
 # Stop services
 docker-compose down
-
-# Stop and remove volumes (wipes the database)
-docker-compose down -v
 
 # Rebuild image
 docker-compose up -d --build
@@ -321,7 +349,7 @@ pip install -r requirements.txt
 **2. Configure environment**
 
 ```bash
-cp .env.example .env
+cp .env.docker.example .env
 # Edit .env with your database credentials
 ```
 
@@ -333,7 +361,7 @@ python3 manage.py create_dbsroot
 # Default credentials: dbsroot / Dbs@Root2026
 ```
 
-**4. Create the query account on each MySQL instance**
+**4. Create the query account on each MySQL / TiDB instance**
 
 ```sql
 CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
