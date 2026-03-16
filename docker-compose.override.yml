@@ -1,0 +1,12 @@
+# docker-compose.override.yml
+# 本地开发调试用，不影响生产 docker-compose.yml
+services:
+  postgres-test:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dbs_admin
+      POSTGRES_PASSWORD: dbs_password
+      POSTGRES_DB: testdb
+    ports:
+      - "15432:5432"
