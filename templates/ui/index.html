@@ -353,6 +353,7 @@
                 <tr>
                   <th data-i18n="col_inst_name">实例名</th>
                   <th data-i18n="col_inst_id">实例ID</th>
+                  <th data-i18n="col_db_type">类型</th>
                   <th data-i18n="col_env">环境</th>
                   <th data-i18n="col_db_name">数据库名</th>
                   <th data-i18n="col_tables">表数量</th>
@@ -1106,6 +1107,7 @@ async function searchDatabases() {
         <tr>
           <td>${r.remark || '-'}</td>
           <td class="text-muted">${r.id ? r.id + 10000 : '-'}</td>
+          <td>${getDbTypeBadge(r.db_type)}</td>
           <td>${envTag}</td>
           <td><strong>${r.db_name}</strong></td>
           ${errCell}
