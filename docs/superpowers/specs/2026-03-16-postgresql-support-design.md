@@ -16,9 +16,10 @@
 
 1. 新增 `postgresql` 作为合法的 `db_type`
 2. 支持 PostgreSQL 实例的核心三项功能：列数据库、列表（public schema）、执行 SQL
-3. 引入连接器抽象层，为未来扩展 Oracle/Redis/MongoDB 奠基
-4. 用 docker-compose 添加本地 PostgreSQL 测试服务，方便开发调试
-5. 不影响现有 MySQL / TiDB 功能
+3. 支持 `DatabaseSearchView` 跨实例搜索时正确处理 PostgreSQL 实例
+4. 引入连接器抽象层，为未来扩展 Oracle/Redis/MongoDB 奠基
+5. 用 docker-compose 添加本地 PostgreSQL 测试服务，方便开发调试
+6. 不影响现有 MySQL / TiDB 功能
 
 ---
 
@@ -28,38 +29,110 @@
 
 定义抽象基类和工厂函数：
 
-```
-BaseConnector
-├── get_databases() -> list[str]
-├── get_tables(db: str) -> list[dict]
-└── execute_sql(sql: str, db: str = '') -> tuple[list[dict], float]
-    # 返回 (results, elapsed_ms)
-    # results 每项结构同现有 ExecuteSqlView 返回格式
+```python
+class BaseConnector:
+    def get_databases(self) -> list[str]: ...
+    def get_tables(self, db: str) -> list[dict]: ...
+    def execute_sql(self, sql: str, db: str = '') -> tuple[list, float]: ...
 
-MySQLConnector(BaseConnector)   # 封装现有 pymysql 逻辑
-PostgreSQLConnector(BaseConnector)  # 新增 psycopg2 实现
+class MySQLConnector(BaseConnector): ...    # 封装现有 pymysql 逻辑
+class PostgreSQLConnector(BaseConnector): ...  # 新增 psycopg2 实现
 
-def get_connector(db_type, host, port, user, password) -> BaseConnector
-    # 工厂函数，未知类型抛 ValueError
+def get_connector(db_type, host, port, user, password) -> BaseConnector:
+    # 按 db_type 返回对应实例，未知类型抛 ValueError
 ```
+
+`execute_sql` 的返回格式与现有 `ExecuteSqlView` 一致：
+```python
+[
+  {'type': 'resultset', 'columns': [...], 'rows': [...], 'row_count': N, 'limited': bool, 'sql': str},
+  {'type': 'affected', 'affected_rows': N, 'sql': str},
+]
+```
+
+### `db_type` 获取策略
+
+所有涉及目标实例的 View（`DatabaseListView`、`TableListView`、`ExecuteSqlView`、`DatabaseSearchView`）均通过 **`ip + port` 从 `Instance` 表查询 `db_type`**，不依赖前端传参。
+
+- 若 `Instance` 记录不存在，默认当作 `mysql` 处理（保持现有向后兼容性）
+- 优点：API 参数不变，不破坏现有调用方；`db_type` 由管理员在实例注册时确定，运行时不可篡改
 
 ### 改造：`databases/views.py`
 
-- `DatabaseListView`、`TableListView`、`ExecuteSqlView`、`DatabaseSearchView` 中直接操作 pymysql 的部分，替换为调用 `get_connector(db_type, ...)` 的统一接口
-- `db_type` 来源：
-  - 单实例操作（list/table/execute）：由前端传入 `db_type` 参数，或从 `Instance` 记录中查询
-  - 搜索：从 `Instance.db_type` 字段取得
-- `InstanceListView.post` / `InstanceDetailView.put`：`db_type` 合法值改为 `('mysql', 'tidb', 'postgresql')`
+**所有直接操作 pymysql 的位置**替换为调用 `get_connector(db_type, ...)` 的统一接口：
 
-### PostgreSQL 数据映射
+| View | 改造要点 |
+|------|---------|
+| `DatabaseListView` | 查 Instance 取 db_type，调用 `connector.get_databases()` |
+| `TableListView` | 同上，调用 `connector.get_tables(db)` |
+| `ExecuteSqlView` | 同上，调用 `connector.execute_sql(sql, db)` |
+| `DatabaseSearchView` | 遍历实例时按 `inst.db_type` 创建对应 connector，调用 `get_databases()` 或搜索逻辑 |
+| `InstanceListView.post` | 将硬编码校验 `if db_type not in ('mysql', 'tidb')` 改为 `('mysql', 'tidb', 'postgresql')` |
+| `InstanceDetailView.put` | 同上，同一文件中有两处需同步修改 |
 
-| 功能 | SQL |
-|------|-----|
-| 列数据库 | `SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres')` |
-| 过滤系统库 | 额外过滤 `pg_catalog`、`information_schema` 等 |
-| 列表（public schema） | `SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_type, table_name` |
-| 执行 SQL | psycopg2 cursor，`cursor.description` 判断结果集，与 MySQL 分支逻辑相同 |
-| 表大小 | `SELECT pg_size_pretty(pg_total_relation_size(quote_ident(table_name)))` |
+`_connect()` 辅助函数继续保留，由 `MySQLConnector` 内部使用，不对外暴露。
+
+### DatabaseSearchView 的 PostgreSQL 处理
+
+当 `inst.db_type == 'postgresql'` 时，使用以下等价查询：
+
+**按数据库名搜索**（替代 MySQL 的 `information_schema.SCHEMATA`）：
+```sql
+SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s AND datistemplate = false
+```
+
+**获取数据库统计**（替代 MySQL 的 `information_schema.TABLES` size 统计）：
+```sql
+SELECT
+  COUNT(*) AS table_count,
+  ROUND(pg_database_size(%s) / 1024.0 / 1024.0, 2) AS size_mb
+FROM information_schema.tables
+WHERE table_schema = 'public' AND table_catalog = %s
+```
+
+**列出所有业务数据库**（替代 MySQL 的 `GROUP BY TABLE_SCHEMA`）：
+```sql
+SELECT
+  datname AS db_name,
+  ROUND(pg_database_size(datname) / 1024.0 / 1024.0, 2) AS size_mb
+FROM pg_catalog.pg_database
+WHERE datistemplate = false AND datname NOT IN ('postgres', 'template0', 'template1')
+ORDER BY datname
+```
+table_count 在此路径返回 `-1`（未统计，与搜索路径的代价不同），前端显示为 `-`。
+
+### PostgreSQL 连接器实现细节
+
+**`get_databases()`**：
+```sql
+SELECT datname FROM pg_catalog.pg_database
+WHERE datistemplate = false AND datname NOT IN ('postgres', 'template0', 'template1')
+ORDER BY datname
+```
+
+**`get_tables(db)`**：连接时指定 `dbname=db`，查询：
+```sql
+SELECT
+  t.table_name AS TABLE_NAME,
+  t.table_type AS TABLE_TYPE,
+  s.n_live_tup  AS TABLE_ROWS,
+  ROUND(pg_total_relation_size(quote_ident(t.table_schema) || '.' || quote_ident(t.table_name)) / 1024.0 / 1024.0, 2) AS size_mb
+FROM information_schema.tables t
+LEFT JOIN pg_stat_user_tables s ON s.relname = t.table_name AND s.schemaname = t.table_schema
+WHERE t.table_schema = 'public'
+ORDER BY t.table_type, t.table_name
+```
+返回字段名与 MySQL 一致（`TABLE_NAME`、`TABLE_TYPE`、`TABLE_ROWS`、`size_mb`），前端无需修改。
+
+**`execute_sql(sql, db)`**：psycopg2 连接到指定 `db`，逐条执行，`cursor.description` 判断结果集。支持多语句（分号分割）。
+
+**只读校验**：`_is_readonly_sql()` 现有前缀列表（`select/show/describe/desc/explain/use`）对 PostgreSQL 同样适用。已知限制：
+- CTE（`WITH ... SELECT ...`）以 `WITH` 开头，query 角色将被拒绝。这是已知限制，暂不处理（复杂度高，使用频率低）。
+- `TABLE tablename` 简写不在白名单，query 角色无法使用，此为预期行为。
+
+### 默认查询账号策略
+
+PostgreSQL 的默认账号沿用 `QUERY_DEFAULT_ACCOUNT` / `QUERY_DEFAULT_PASSWORD` 环境变量，但实际账号名由 DBA 在 PostgreSQL 实例上自行创建（通常命名为 `dbs_admin`，与 MySQL 保持一致）。docker-compose 测试服务中使用 `POSTGRES_USER=dbs_admin` 以统一账号名。
 
 ### `databases/models.py`
 
@@ -67,17 +140,22 @@ def get_connector(db_type, host, port, user, password) -> BaseConnector
 
 ### `requirements.txt`
 
-新增 `psycopg2-binary==2.9.9`（binary 版本无需本地编译，开发/生产均适用）。
+新增 `psycopg2-binary>=2.9.10`（binary 版本无需本地编译，开发/生产均适用）。
 
-### `docker-compose.yml`（测试用）
+### 过滤库名
+
+在现有 `FILTER_DB_NAMES` 中追加：
+```python
+'postgres', 'template0', 'template1',
+```
+
+### `docker-compose.override.yml`（新建，测试专用）
+
+**不修改** `docker-compose.yml`，而是新建 `docker-compose.override.yml`（docker-compose 会自动合并）：
 
 ```yaml
+# docker-compose.override.yml — 仅用于本地开发调试，不提交到生产
 services:
-  app:
-    # 现有配置不变，添加 depends_on
-    depends_on:
-      - postgres-test
-
   postgres-test:
     image: postgres:16
     restart: unless-stopped
@@ -89,53 +167,26 @@ services:
       - "15432:5432"
 ```
 
-> **注意**：`postgres-test` 服务仅用于本地开发调试，生产部署时不需要包含此服务。构建镜像前移除或使用独立的 `docker-compose.override.yml`。
-
----
-
-## 数据流
-
-```
-前端请求 (db_type=postgresql, ip, port, ...)
-    ↓
-databases/views.py
-    ↓ get_connector('postgresql', ip, port, user, passwd)
-common/connector.py → PostgreSQLConnector
-    ↓ psycopg2.connect(host, port, user, password, dbname)
-目标 PostgreSQL 实例
-```
-
----
-
-## 只读校验
-
-`_is_readonly_sql()` 现有逻辑基于关键字前缀，对 PostgreSQL 同样适用（SELECT/SHOW 等），无需修改。
-
----
-
-## 过滤库名
-
-PostgreSQL 系统库过滤列表（追加到现有 `FILTER_DB_NAMES`）：
-
-```python
-'postgres', 'template0', 'template1',
-```
+本地启动测试：`docker-compose up postgres-test` 即可。`docker-compose.yml` 保持原样，生产部署不受影响。
 
 ---
 
 ## 测试计划
 
-1. docker-compose 启动 `postgres-test` 服务
-2. 在实例注册表中添加 `127.0.0.1:15432 / postgresql` 实例
-3. 验证：列数据库（应返回 `testdb`）
-4. 验证：列表（testdb 下的 public schema 表）
-5. 验证：执行 `SELECT version()`、多语句、非只读语句被 query 角色拒绝
-6. 验证：MySQL/TiDB 实例功能不受影响
+1. `docker-compose up postgres-test` 启动测试 PG 实例
+2. 在实例注册表中添加 `127.0.0.1:15432 / postgresql / dbs_admin`
+3. 验证：`DatabaseListView` 返回 `['testdb']`
+4. 验证：`TableListView` 返回 testdb 下 public schema 的表（初始为空或含测试表）
+5. 验证：`ExecuteSqlView` 执行 `SELECT version()`、多语句、DML 被 query 角色拒绝
+6. 验证：`DatabaseSearchView` 按名搜索能正确返回 PG 实例结果
+7. 验证：MySQL/TiDB 实例功能不受影响（回归测试）
 
 ---
 
 ## 不在范围内
 
-- PostgreSQL 集群拓扑查询（primary/replica 状态）
+- PostgreSQL 集群拓扑查询（primary/replica 状态、WAL 延迟）
 - Schema 多层级导航（固定使用 public schema）
 - 连接池（与现有 MySQL 行为一致，按需创建短连接）
+- CTE 的 query 角色只读豁免
+- 云托管 PG 系统库过滤（如 RDS 的 `rdsadmin`）
