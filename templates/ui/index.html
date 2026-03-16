@@ -350,35 +350,33 @@
               <i class="bi bi-info-circle me-1"></i>
               <span data-i18n="add_inst_info">连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。</span>
             </div>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label" data-i18n="inst_name_label">实例名</label>
-                <input type="text" class="form-control" id="inst-remark" placeholder="生产主库">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label" data-i18n="ip_label">IP 地址</label>
-                <input type="text" class="form-control" id="inst-add-ip" placeholder="127.0.0.1">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" data-i18n="port_label">端口</label>
-                <input type="number" class="form-control" id="inst-add-port" value="3306">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" data-i18n="db_type_label">类型</label>
-                <select class="form-select" id="inst-add-dbtype">
-                  <option value="mysql">MySQL</option>
-                  <option value="tidb">TiDB</option>
-                  <option value="postgresql">PostgreSQL</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label" data-i18n="env_label">环境</label>
-                <select class="form-select" id="inst-add-env">
-                  <option value="test" data-i18n="env_test">测试</option>
-                  <option value="prod" data-i18n="env_prod">生产</option>
-                  <option value="dev" data-i18n="env_dev">开发</option>
-                </select>
-              </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="inst_name_label">实例名</label>
+              <input type="text" class="form-control" id="inst-remark" placeholder="生产主库">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="ip_label">IP 地址</label>
+              <input type="text" class="form-control" id="inst-add-ip" placeholder="127.0.0.1">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="port_label">端口</label>
+              <input type="number" class="form-control" id="inst-add-port" value="3306">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="db_type_label">类型</label>
+              <select class="form-select" id="inst-add-dbtype">
+                <option value="mysql">MySQL</option>
+                <option value="tidb">TiDB</option>
+                <option value="postgresql">PostgreSQL</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" data-i18n="env_label">环境</label>
+              <select class="form-select" id="inst-add-env">
+                <option value="test" data-i18n="env_test">测试</option>
+                <option value="prod" data-i18n="env_prod">生产</option>
+                <option value="dev" data-i18n="env_dev">开发</option>
+              </select>
             </div>
           </div>
           <div class="modal-footer">
