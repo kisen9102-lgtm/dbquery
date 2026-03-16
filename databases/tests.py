@@ -95,3 +95,69 @@ class InstToDictTest(TestCase):
         self.assertNotIn('port', d)
         self.assertIn('id', d)
         self.assertIn('remark', d)
+
+
+class DatabaseListViewTest(TestCase):
+
+    def setUp(self):
+        self.root = User.objects.create_superuser('root3', password='root3')
+        self.quser = User.objects.create_user('quser3', password='quser3')
+        self.inst = Instance.objects.create(
+            remark='pg', ip='10.0.0.1', port=5432, env='test', db_type='postgresql'
+        )
+        self.client = APIClient()
+
+    def test_instance_id_returns_db_list(self):
+        self.client.force_authenticate(self.root)
+        with patch('databases.views.get_connector') as mock_gc:
+            mock_gc.return_value.get_databases.return_value = ['mydb']
+            with patch('databases.views._can_access_instance', return_value=True):
+                resp = self.client.get(
+                    '/databases/', {'instance_id': self.inst.pk}
+                )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['db_names'], ['mydb'])
+
+    def test_ip_port_forbidden_for_query_user(self):
+        self.client.force_authenticate(self.quser)
+        resp = self.client.get('/databases/', {'ip': '10.0.0.1', 'port': 5432})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_missing_params_returns_400(self):
+        self.client.force_authenticate(self.root)
+        resp = self.client.get('/databases/')
+        self.assertEqual(resp.status_code, 400)
+
+
+class ExecuteSqlViewTest(TestCase):
+
+    def setUp(self):
+        self.root = User.objects.create_superuser('root4', password='root4')
+        self.quser = User.objects.create_user('quser4', password='quser4')
+        self.inst = Instance.objects.create(
+            remark='pg', ip='10.0.0.1', port=5432, env='test', db_type='postgresql'
+        )
+        self.client = APIClient()
+
+    def test_execute_sql_with_instance_id(self):
+        self.client.force_authenticate(self.root)
+        mock_results = [{'type': 'resultset', 'columns': ['v'], 'rows': [['16']], 'row_count': 1, 'limited': False, 'sql': 'SELECT version()'}]
+        with patch('databases.views.get_connector') as mock_gc:
+            mock_gc.return_value.execute_sql.return_value = (mock_results, 5.0)
+            with patch('databases.views._can_access_instance', return_value=True):
+                resp = self.client.post('/databases/execute_sql/', {
+                    'instance_id': self.inst.pk,
+                    'sql': 'SELECT version()',
+                }, format='json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data['error'])
+
+    def test_query_role_blocked_from_dml(self):
+        self.client.force_authenticate(self.quser)
+        with patch('databases.views._resolve_instance',
+                   return_value=('10.0.0.1', 5432, 'postgresql', self.inst)):
+            resp = self.client.post('/databases/execute_sql/', {
+                'instance_id': self.inst.pk,
+                'sql': 'DELETE FROM users',
+            }, format='json')
+        self.assertEqual(resp.status_code, 403)
