@@ -6,7 +6,7 @@
 
 ## 中文说明
 
-基于 Django 4.2 + Django REST Framework 构建的数据库运维查询平台，支持 MySQL 和 TiDB，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
+基于 Django 4.2 + Django REST Framework 构建的数据库运维查询平台，支持 MySQL、TiDB 和 PostgreSQL，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
 
 ### 功能概览
 
@@ -14,7 +14,7 @@
 |------|------|
 | 数据库查询 | 按数据库名或 IP+端口跨实例检索数据库信息 |
 | SQL 查询 | 在线 SQL 编辑器，支持多语句执行、对象浏览器、结果导出 |
-| 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB 实例（admin / root 可操作） |
+| 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB / PostgreSQL 实例（admin / root 可操作） |
 | 集群拓扑查询 | 查询指定节点的主从角色与复制状态 |
 | 用户管理 | 创建 / 编辑用户，支持三种角色（root / admin / query） |
 | 用户组管理 | 管理实例访问权限组，控制 query 用户可见的实例范围 |
@@ -26,6 +26,7 @@
 |------|------|
 | MySQL 8.0 | 完整支持 |
 | TiDB | 兼容 MySQL 协议，完整支持 |
+| PostgreSQL 14+ | 支持多 Schema，数据库选择器显示 `dbname_schema` 格式 |
 
 ### 角色权限
 
@@ -33,7 +34,7 @@
 |------|------|
 | `root` | 全部权限，不受任何限制 |
 | `admin` | 可管理实例、用户、用户组；不可修改 root 账号 |
-| `query` | 只能执行只读 SQL；只能看到所属用户组内的实例；禁止查询系统库 |
+| `query` | 只能执行只读 SQL；只能看到所属用户组内的实例；**不可见实例 IP/端口**；禁止查询系统库 |
 
 ### 技术栈
 
@@ -41,6 +42,7 @@
 - **元数据库**：外部 MySQL 8.0（由用户自行提供）
 - **前端**：Bootstrap 5.3、Bootstrap Icons、CodeMirror 5（单页应用，无需构建）
 - **认证**：Session 认证 + CSRF 保护
+- **数据库驱动**：pymysql（MySQL/TiDB）、psycopg2-binary（PostgreSQL）
 
 ### 目录结构
 
@@ -48,7 +50,7 @@
 .
 ├── accounts/             # 用户认证、角色、用户组管理
 ├── clusters/             # 集群拓扑角色查询
-├── common/               # 配置、数据库连接工具
+├── common/               # 连接器抽象层（BaseConnector / MySQLConnector / PostgreSQLConnector）
 ├── databases/            # 数据库 / 实例查询与 SQL 执行
 ├── dbquery/              # Django 项目配置、路由
 ├── templates/            # 前端页面（index.html、sql_editor.html、登录页）
@@ -171,12 +173,24 @@ python3 manage.py create_dbsroot
 # 默认账号：dbsroot / Dbs@Root2026
 ```
 
-**4. 在目标 MySQL / TiDB 实例上创建查询账号**
+**4. 在目标实例上创建查询账号**
+
+MySQL / TiDB：
 
 ```sql
 CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
 GRANT SELECT, SHOW DATABASES, REPLICATION CLIENT, PROCESS ON *.* TO 'dbs_admin'@'%';
 FLUSH PRIVILEGES;
+```
+
+PostgreSQL：
+
+```sql
+CREATE USER dbs_admin WITH PASSWORD 'your-password';
+GRANT CONNECT ON DATABASE your_db TO dbs_admin;
+GRANT USAGE ON SCHEMA public TO dbs_admin;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO dbs_admin;
+-- 如有多个 schema，对每个 schema 重复 GRANT USAGE / SELECT
 ```
 
 **5. 启动服务**
@@ -198,7 +212,7 @@ python3 manage.py runserver 0.0.0.0:8000
 
 ## English
 
-A database operations and query platform built with Django 4.2 + Django REST Framework. Supports MySQL and TiDB with cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
+A database operations and query platform built with Django 4.2 + Django REST Framework. Supports MySQL, TiDB, and PostgreSQL with cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
 
 ### Features
 
@@ -206,7 +220,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 |--------|-------------|
 | DB Search | Search databases by name or IP+port across all registered instances |
 | SQL Query | Online SQL editor with multi-statement execution, object browser, and CSV export |
-| Instance Management | Register / edit / delete MySQL / TiDB instances (admin / root only) |
+| Instance Management | Register / edit / delete MySQL / TiDB / PostgreSQL instances (admin / root only) |
 | Cluster Topology | Query master/slave role and replication status for any node |
 | User Management | Create / edit users with three roles: root / admin / query |
 | Group Management | Manage instance access groups to control which instances query users can see |
@@ -218,6 +232,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 |------|-------|
 | MySQL 8.0 | Fully supported |
 | TiDB | MySQL-protocol compatible, fully supported |
+| PostgreSQL 14+ | Multi-schema support; DB selector uses `dbname_schema` format |
 
 ### Roles & Permissions
 
@@ -225,7 +240,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 |------|-------------|
 | `root` | Full access, no restrictions |
 | `admin` | Manage instances, users, and groups; cannot modify root account |
-| `query` | Read-only SQL only; can only see instances in their assigned groups; system databases are blocked |
+| `query` | Read-only SQL only; can only see instances in their assigned groups; **instance IP/port hidden**; system databases are blocked |
 
 ### Tech Stack
 
@@ -233,6 +248,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 - **Metadata DB**: External MySQL 8.0 (user-provided)
 - **Frontend**: Bootstrap 5.3, Bootstrap Icons, CodeMirror 5 (SPA, no build step)
 - **Auth**: Session authentication + CSRF protection
+- **DB Drivers**: pymysql (MySQL/TiDB), psycopg2-binary (PostgreSQL)
 
 ### Project Structure
 
@@ -240,7 +256,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 .
 ├── accounts/             # Auth, roles, user group management
 ├── clusters/             # Cluster topology query
-├── common/               # Config and DB connection utilities
+├── common/               # Connector abstraction layer (BaseConnector / MySQLConnector / PostgreSQLConnector)
 ├── databases/            # Database / instance query and SQL execution
 ├── dbquery/              # Django project settings and routing
 ├── templates/            # Frontend pages (index.html, sql_editor.html, login)
