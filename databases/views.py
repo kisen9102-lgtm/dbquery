@@ -225,6 +225,8 @@ class ExecuteSqlView(APIView):
                 )
 
         account, passwd = _resolve_credentials(account, passwd)
+        if db_type == 'postgresql':
+            sql = sql.replace('`', '"')
         try:
             connector = get_connector(db_type, ip, port, account, passwd)
             results, elapsed = connector.execute_sql(sql, db or '')
