@@ -88,6 +88,18 @@ def _resolve_credentials(account, passwd):
         return QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD
     return account, passwd
 
+
+def _resolve_connector_credentials(inst, account, passwd):
+    """
+    For redis/mongodb: use per-instance auth fields directly.
+    For sql types: fall back to env-var default account if not provided.
+    Returns (user, password, auth_source).
+    """
+    if inst and inst.db_type in ('redis', 'mongodb'):
+        return inst.auth_username, inst.auth_password, inst.auth_source
+    user, pw = _resolve_credentials(account, passwd)
+    return user, pw, ''
+
 # 保留名字供 DatabaseSearchView 用；MySQL 系统库 + PG 系统库合并
 FILTER_DB_NAMES = MYSQL_SYSTEM_DBS | {'postgres', 'template0', 'template1'}
 _FILTER_DB_TUPLE = tuple(FILTER_DB_NAMES)
@@ -126,9 +138,9 @@ class DatabaseListView(APIView):
             return Response({'error': True, 'message': str(e), 'db_names': []},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        account, passwd = _resolve_credentials(account, passwd)
+        user, pw, asrc = _resolve_connector_credentials(inst, account, passwd)
         try:
-            connector = get_connector(db_type, ip, port, account, passwd)
+            connector = get_connector(db_type, ip, port, user, pw, asrc)
             db_names = connector.get_databases()
             return Response({'error': False, 'message': '', 'db_names': db_names})
         except Exception as exc:
@@ -170,9 +182,9 @@ class TableListView(APIView):
             return Response({'error': True, 'message': str(e), 'tables': []},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        account, passwd = _resolve_credentials(account, passwd)
+        user, pw, asrc = _resolve_connector_credentials(inst, account, passwd)
         try:
-            connector = get_connector(db_type, ip, port, account, passwd)
+            connector = get_connector(db_type, ip, port, user, pw, asrc)
             tables = connector.get_tables(db)
             return Response({'error': False, 'tables': tables})
         except Exception as exc:
@@ -215,7 +227,7 @@ class ExecuteSqlView(APIView):
             return Response({'error': True, 'message': str(e)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        if _is_query_role(request.user):
+        if _is_query_role(request.user) and db_type not in ('redis', 'mongodb'):
             ok, bad_stmt = _is_readonly_sql(sql)
             if not ok:
                 return Response(
@@ -224,11 +236,11 @@ class ExecuteSqlView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-        account, passwd = _resolve_credentials(account, passwd)
+        user, pw, asrc = _resolve_connector_credentials(inst, account, passwd)
         if db_type == 'postgresql':
             sql = sql.replace('`', '"')
         try:
-            connector = get_connector(db_type, ip, port, account, passwd)
+            connector = get_connector(db_type, ip, port, user, pw, asrc)
             results, elapsed = connector.execute_sql(sql, db or '')
             return Response({'error': False, 'results': results, 'elapsed_ms': elapsed})
         except Exception as exc:
@@ -253,6 +265,8 @@ def _inst_to_dict_full(inst):
         'id': inst.id, 'remark': inst.remark,
         'ip': inst.ip, 'port': inst.port,
         'env': inst.env, 'db_type': inst.db_type,
+        'auth_username': inst.auth_username,
+        'auth_source': inst.auth_source,
     }
 
 
@@ -261,6 +275,8 @@ def _inst_to_dict_safe(inst):
     return {
         'id': inst.id, 'remark': inst.remark,
         'env': inst.env, 'db_type': inst.db_type,
+        'auth_username': inst.auth_username,
+        'auth_source': inst.auth_source,
     }
 
 
@@ -306,7 +322,7 @@ class InstanceListView(APIView):
             port = int(port)
         except (TypeError, ValueError):
             return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
-        if db_type not in ('mysql', 'tidb', 'postgresql'):
+        if db_type not in ('mysql', 'tidb', 'postgresql', 'redis', 'mongodb'):
             return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
 
         if Instance.objects.filter(ip=ip, port=port).exists():
@@ -315,7 +331,11 @@ class InstanceListView(APIView):
         try:
             inst = Instance.objects.create(
                 remark=remark or ip, ip=ip, port=port,
-                env=env, db_type=db_type, created_by=request.user.username,
+                env=env, db_type=db_type,
+                auth_username=request.data.get('auth_username', ''),
+                auth_password=request.data.get('auth_password', ''),
+                auth_source=request.data.get('auth_source', ''),
+                created_by=request.user.username,
             )
             return Response(_inst_to_dict_full(inst), status=status.HTTP_201_CREATED)
         except Exception as exc:
@@ -345,7 +365,7 @@ class InstanceDetailView(APIView):
             port = int(port)
         except (TypeError, ValueError):
             return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
-        if db_type not in ('mysql', 'tidb', 'postgresql'):
+        if db_type not in ('mysql', 'tidb', 'postgresql', 'redis', 'mongodb'):
             return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
 
         if (ip != inst.ip or port != inst.port) and \
@@ -359,6 +379,11 @@ class InstanceDetailView(APIView):
             inst.port = port
             inst.env = env
             inst.db_type = db_type
+            inst.auth_username = request.data.get('auth_username', inst.auth_username)
+            inst.auth_source   = request.data.get('auth_source',   inst.auth_source)
+            new_pw = request.data.get('auth_password', '')
+            if new_pw:  # only update if user provided a new password
+                inst.auth_password = new_pw
             inst.save()
             return Response(_inst_to_dict_full(inst))
         except Exception as exc:
@@ -421,9 +446,9 @@ class DatabaseSearchView(APIView):
 
         for inst in instances:
             try:
+                user, pw, asrc = _resolve_connector_credentials(inst, None, None)
                 connector = get_connector(
-                    inst.db_type, inst.ip, inst.port,
-                    QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD,
+                    inst.db_type, inst.ip, inst.port, user, pw, asrc,
                 )
                 db_stats = connector.search_databases(db_name)
             except Exception as exc:

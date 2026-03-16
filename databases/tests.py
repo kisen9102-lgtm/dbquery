@@ -263,3 +263,73 @@ class InstanceAuthFieldsTest(TestCase):
         valid_types = [c[0] for c in Instance.DB_TYPE_CHOICES]
         self.assertIn('redis', valid_types)
         self.assertIn('mongodb', valid_types)
+
+
+class InstanceRedisMongoValidationTest(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        self.client_http = self.client
+        self.admin = User.objects.create_user('admin_v', password='pass')
+        from accounts.models import UserProfile
+        UserProfile.objects.create(user=self.admin, role='admin')
+        self.client_http.login(username='admin_v', password='pass')
+
+    def test_post_redis_instance_accepted(self):
+        resp = self.client_http.post(
+            '/databases/instances/',
+            data='{"ip":"10.0.0.5","port":6379,"db_type":"redis","auth_password":"secret"}',
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_post_mongodb_instance_accepted(self):
+        resp = self.client_http.post(
+            '/databases/instances/',
+            data='{"ip":"10.0.0.6","port":27017,"db_type":"mongodb","auth_username":"u","auth_password":"p","auth_source":"admin"}',
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 201)
+
+    def test_post_invalid_db_type_rejected(self):
+        resp = self.client_http.post(
+            '/databases/instances/',
+            data='{"ip":"10.0.0.7","port":9999,"db_type":"oracle"}',
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+
+class ResolveConnectorCredentialsTest(TestCase):
+    """Unit test for _resolve_connector_credentials credential branching."""
+
+    def _make_inst(self, db_type, auth_username='myuser', auth_password='mypass', auth_source='mydb'):
+        from databases.models import Instance
+        inst = Instance(ip='10.0.0.1', port=6379, db_type=db_type,
+                        auth_username=auth_username, auth_password=auth_password,
+                        auth_source=auth_source)
+        return inst
+
+    def test_redis_uses_instance_credentials(self):
+        from databases.views import _resolve_connector_credentials
+        inst = self._make_inst('redis')
+        user, pw, asrc = _resolve_connector_credentials(inst, 'ignored', 'ignored')
+        self.assertEqual(user, 'myuser')
+        self.assertEqual(pw, 'mypass')
+        self.assertEqual(asrc, 'mydb')
+
+    def test_mongodb_uses_instance_credentials(self):
+        from databases.views import _resolve_connector_credentials
+        inst = self._make_inst('mongodb')
+        user, pw, asrc = _resolve_connector_credentials(inst, 'ignored', 'ignored')
+        self.assertEqual(user, 'myuser')
+        self.assertEqual(pw, 'mypass')
+        self.assertEqual(asrc, 'mydb')
+
+    def test_mysql_falls_back_to_env_when_no_auth_fields(self):
+        from databases.views import _resolve_connector_credentials
+        from common.config import QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD
+        inst = self._make_inst('mysql', auth_username='', auth_password='')
+        user, pw, asrc = _resolve_connector_credentials(inst, None, None)
+        self.assertEqual(user, QUERY_DEFAULT_ACCOUNT)
+        self.assertEqual(pw, QUERY_DEFAULT_PASSWORD)
+        self.assertEqual(asrc, '')
