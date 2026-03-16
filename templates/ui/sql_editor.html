@@ -381,6 +381,11 @@ function applyEditorMode() {
   // #left-panel is the actual element ID in sql_editor.html
   const leftPanel = document.getElementById('left-panel');
   if (leftPanel) leftPanel.style.display = CONN.dbType === 'redis' ? 'none' : '';
+
+  // 根据数据库类型更新左上角标题
+  const dbTypeLabel = {mysql:'MySQL', tidb:'TiDB', postgresql:'PostgreSQL', redis:'Redis', mongodb:'MongoDB'};
+  const titleEl = document.querySelector('.title [data-i18n="title"]');
+  if (titleEl) titleEl.textContent = dbTypeLabel[CONN.dbType] || 'SQL 编辑器';
 }
 applyEditorMode();
 
