@@ -102,170 +102,138 @@ def _connect(ip, port, account, passwd, db=None):
 
 
 class DatabaseListView(APIView):
-    """查询目标 MySQL 实例的数据库列表"""
+    """查询目标实例的数据库列表（支持 MySQL/TiDB/PostgreSQL）"""
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        account = request.GET.get('account', '')
-        passwd = request.GET.get('passwd', '')
-        ip = request.GET.get('ip', '')
+        instance_id = request.GET.get('instance_id', '').strip()
+        account     = request.GET.get('account', '')
+        passwd      = request.GET.get('passwd', '')
+        ip          = request.GET.get('ip', '')
+        port_str    = request.GET.get('port', '')
         try:
-            port = int(request.GET.get('port', 0))
+            port = int(port_str) if port_str else 0
         except (TypeError, ValueError):
             port = 0
 
-        if not ip or not port:
-            return Response(
-                {'error': True, 'message': 'ip、port 不能为空', 'db_names': []},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if not _can_access_instance(request.user, ip, port):
-            return Response(
-                {'error': True, 'message': '无权限访问该实例，请联系管理员将实例加入您的用户组', 'db_names': []},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        try:
+            ip, port, db_type, inst = _resolve_instance(request, ip, port, instance_id)
+        except PermissionError as e:
+            return Response({'error': True, 'message': str(e), 'db_names': []},
+                            status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': True, 'message': str(e), 'db_names': []},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         account, passwd = _resolve_credentials(account, passwd)
-
         try:
-            conn = pymysql.connect(host=ip, port=port, user=account, password=passwd)
-            with conn.cursor() as cursor:
-                cursor.execute('SHOW DATABASES')
-                rows = cursor.fetchall()
-            conn.close()
-            db_names = [row[0] for row in rows if row[0] not in FILTER_DB_NAMES]
+            connector = get_connector(db_type, ip, port, account, passwd)
+            db_names = connector.get_databases()
             return Response({'error': False, 'message': '', 'db_names': db_names})
         except Exception as exc:
             logger.error('查询数据库列表失败 %s:%d %s', ip, port, exc)
             err_msg = str(exc)
-            if 'Access denied' in err_msg:
-                err_msg = f'连接失败：请在目标实例上创建 dbs_admin 账号并授权。（原始错误：{err_msg}）'
-            return Response(
-                {'error': True, 'message': err_msg, 'db_names': []},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+            if 'Access denied' in err_msg or 'authentication' in err_msg.lower():
+                err_msg = f'连接失败：请在目标实例上创建账号并授权。（原始错误：{err_msg}）'
+            return Response({'error': True, 'message': err_msg, 'db_names': []},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class TableListView(APIView):
-    """查询指定数据库的表和视图列表"""
+    """查询指定数据库的表和视图列表（支持 MySQL/TiDB/PostgreSQL）"""
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        ip = request.GET.get('ip', '')
-        account = request.GET.get('account', '')
-        passwd = request.GET.get('passwd', '')
-        db = request.GET.get('db', '')
+        instance_id = request.GET.get('instance_id', '').strip()
+        account     = request.GET.get('account', '')
+        passwd      = request.GET.get('passwd', '')
+        db          = request.GET.get('db', '')
+        ip          = request.GET.get('ip', '')
+        port_str    = request.GET.get('port', '')
         try:
-            port = int(request.GET.get('port', 0))
+            port = int(port_str) if port_str else 0
         except (TypeError, ValueError):
             port = 0
 
-        if not ip or not port or not db:
+        if not db:
             return Response({'error': True, 'message': '参数不完整', 'tables': []},
                             status=status.HTTP_400_BAD_REQUEST)
-        if not _can_access_instance(request.user, ip, port):
-            return Response(
-                {'error': True, 'message': '无权限访问该实例', 'tables': []},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+
+        try:
+            ip, port, db_type, inst = _resolve_instance(request, ip, port, instance_id)
+        except PermissionError as e:
+            return Response({'error': True, 'message': str(e), 'tables': []},
+                            status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': True, 'message': str(e), 'tables': []},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         account, passwd = _resolve_credentials(account, passwd)
         try:
-            conn = _connect(ip, port, account, passwd, db)
-            with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-                cursor.execute(
-                    "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, "
-                    "ROUND(DATA_LENGTH/1024/1024, 2) AS size_mb "
-                    "FROM information_schema.TABLES "
-                    "WHERE TABLE_SCHEMA = %s ORDER BY TABLE_TYPE, TABLE_NAME",
-                    (db,)
-                )
-                tables = cursor.fetchall()
-            conn.close()
+            connector = get_connector(db_type, ip, port, account, passwd)
+            tables = connector.get_tables(db)
             return Response({'error': False, 'tables': tables})
         except Exception as exc:
             logger.error('查询表列表失败 %s:%d/%s %s', ip, port, db, exc)
             err_msg = str(exc)
-            if 'Access denied' in err_msg:
-                err_msg = f'连接失败：请在目标实例上创建 dbs_admin 账号并授权。（原始错误：{err_msg}）'
+            if 'Access denied' in err_msg or 'authentication' in err_msg.lower():
+                err_msg = f'连接失败：请在目标实例上创建账号并授权。（原始错误：{err_msg}）'
             return Response({'error': True, 'message': err_msg, 'tables': []},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ExecuteSqlView(APIView):
-    """执行 SQL 语句并返回结果"""
+    """执行 SQL 语句并返回结果（支持 MySQL/TiDB/PostgreSQL）"""
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
 
-    MAX_ROWS = 1000  # 最多返回行数
-
     def post(self, request):
-        data = request.data
-        ip = data.get('ip', '')
-        account = data.get('account', '')
-        passwd = data.get('passwd', '')
-        db = data.get('db', '')
-        sql = data.get('sql', '').strip()
+        data        = request.data
+        instance_id = str(data.get('instance_id', '')).strip()
+        account     = data.get('account', '')
+        passwd      = data.get('passwd', '')
+        db          = data.get('db', '')
+        sql         = data.get('sql', '').strip()
+        ip          = data.get('ip', '')
         try:
             port = int(data.get('port', 0))
         except (TypeError, ValueError):
             port = 0
 
-        if not ip or not port or not sql:
+        if not sql:
             return Response({'error': True, 'message': '参数不完整'},
                             status=status.HTTP_400_BAD_REQUEST)
-        if not _can_access_instance(request.user, ip, port):
-            return Response(
-                {'error': True, 'message': '无权限访问该实例，请联系管理员将实例加入您的用户组'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+
+        try:
+            ip, port, db_type, inst = _resolve_instance(request, ip, port, instance_id)
+        except PermissionError as e:
+            return Response({'error': True, 'message': str(e)},
+                            status=status.HTTP_403_FORBIDDEN)
+        except ValueError as e:
+            return Response({'error': True, 'message': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         if _is_query_role(request.user):
             ok, bad_stmt = _is_readonly_sql(sql)
             if not ok:
                 return Response(
-                    {'error': True, 'message': f'query 角色仅允许执行查询语句（SELECT/SHOW/DESCRIBE/EXPLAIN），'
-                                               f'禁止执行：{bad_stmt[:60]}'},
+                    {'error': True,
+                     'message': f'query 角色仅允许执行查询语句，禁止执行：{bad_stmt[:60]}'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+
         account, passwd = _resolve_credentials(account, passwd)
         try:
-            conn = _connect(ip, port, account, passwd, db or None)
-            results = []
-            t0 = time.time()
-            with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-                # 支持多语句（分号分割），逐条执行
-                statements = [s.strip() for s in sql.split(';') if s.strip()]
-                for stmt in statements:
-                    cursor.execute(stmt)
-                    if cursor.description:
-                        columns = [d[0] for d in cursor.description]
-                        rows = cursor.fetchmany(self.MAX_ROWS)
-                        limited = cursor.fetchone() is not None  # 是否被截断
-                        results.append({
-                            'type': 'resultset',
-                            'columns': columns,
-                            'rows': [list(r.values()) for r in rows],
-                            'row_count': len(rows),
-                            'limited': limited,
-                            'sql': stmt,
-                        })
-                    else:
-                        conn.commit()
-                        results.append({
-                            'type': 'affected',
-                            'affected_rows': cursor.rowcount,
-                            'sql': stmt,
-                        })
-            elapsed = round((time.time() - t0) * 1000, 1)
-            conn.close()
+            connector = get_connector(db_type, ip, port, account, passwd)
+            results, elapsed = connector.execute_sql(sql, db or '')
             return Response({'error': False, 'results': results, 'elapsed_ms': elapsed})
         except Exception as exc:
             logger.error('执行 SQL 失败 %s:%d %s', ip, port, exc)
             err_msg = str(exc)
-            if 'Access denied' in err_msg:
-                err_msg = f'连接失败：请在目标实例上创建 dbs_admin 账号并授权。（原始错误：{err_msg}）'
+            if 'Access denied' in err_msg or 'authentication' in err_msg.lower():
+                err_msg = f'连接失败：请在目标实例上创建账号并授权。（原始错误：{err_msg}）'
             return Response({'error': True, 'message': err_msg},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
