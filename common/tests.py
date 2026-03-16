@@ -148,14 +148,16 @@ class PostgreSQLConnectorUnitTest(TestCase):
 
     def test_search_databases_empty_calls_search_all(self):
         c = self._make_connector()
-        conn, _ = self._mock_conn(
-            fetchall_result=[('testdb', 1.5), ('myapp', 0.3)]
-        )
-        with patch.object(c, '_connect', return_value=conn):
+        # 第一次调用：返回库列表；后续调用：返回 schema 列表
+        conn_dbs, _ = self._mock_conn(fetchall_result=[('testdb', 1.5)])
+        conn_schemas, _ = self._mock_conn(fetchall_result=[('public',), ('sales',)])
+        with patch.object(c, '_connect', side_effect=[conn_dbs, conn_schemas]):
             result = c.search_databases('')
         self.assertEqual(len(result), 2)
+        db_names = [r['db_name'] for r in result]
+        self.assertIn('testdb_public', db_names)
+        self.assertIn('testdb_sales', db_names)
         self.assertEqual(result[0]['table_count'], -1)  # _search_all 不统计表数
-        self.assertEqual(result[0]['db_name'], 'testdb_public')
 
 
 import unittest
@@ -217,8 +219,10 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
     def test_search_databases_finds_testdb(self):
         c = self._make_connector()
         result = c.search_databases('testdb')
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['db_name'], 'testdb_public')
+        db_names = [r['db_name'] for r in result]
+        self.assertIn('testdb_public', db_names)
+        self.assertIn('testdb_inventory', db_names)
+        self.assertIn('testdb_sales', db_names)
 
     def test_search_databases_not_found(self):
         c = self._make_connector()
