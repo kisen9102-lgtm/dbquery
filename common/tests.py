@@ -108,3 +108,120 @@ class GetConnectorTest(TestCase):
         from common.connector import get_connector
         with self.assertRaises(ValueError):
             get_connector('oracle', '127.0.0.1', 1521, 'u', 'p')
+
+
+class PostgreSQLConnectorUnitTest(TestCase):
+    """PostgreSQLConnector 单元测试：mock _connect，无需运行容器。"""
+
+    def _make_connector(self):
+        from common.connector import PostgreSQLConnector
+        return PostgreSQLConnector('127.0.0.1', 15432, 'u', 'p')
+
+    def _mock_conn(self, fetchall_result=None, fetchone_result=None):
+        conn = MagicMock()
+        cursor = MagicMock()
+        cursor.__enter__ = MagicMock(return_value=cursor)
+        cursor.__exit__ = MagicMock(return_value=False)
+        if fetchall_result is not None:
+            cursor.fetchall.return_value = fetchall_result
+        if fetchone_result is not None:
+            cursor.fetchone.return_value = fetchone_result
+        conn.cursor.return_value = cursor
+        return conn, cursor
+
+    def test_get_databases_returns_list(self):
+        c = self._make_connector()
+        conn, _ = self._mock_conn(fetchall_result=[('testdb',), ('myapp',)])
+        with patch.object(c, '_connect', return_value=conn):
+            result = c.get_databases()
+        self.assertIn('testdb', result)
+        self.assertIn('myapp', result)
+
+    def test_search_databases_single_system_db_returns_empty(self):
+        from common.connector import PG_SYSTEM_DBS
+        c = self._make_connector()
+        for sys_db in PG_SYSTEM_DBS:
+            result = c._search_databases_single(sys_db)
+            self.assertEqual(result, [], f'{sys_db} should be filtered')
+
+    def test_search_databases_empty_calls_search_all(self):
+        c = self._make_connector()
+        conn, _ = self._mock_conn(
+            fetchall_result=[('testdb', 1.5), ('myapp', 0.3)]
+        )
+        with patch.object(c, '_connect', return_value=conn):
+            result = c.search_databases('')
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['table_count'], -1)  # _search_all 不统计表数
+
+
+import unittest
+
+PG_AVAILABLE = False
+try:
+    import psycopg2
+    psycopg2.connect(
+        host='127.0.0.1', port=15432,
+        user='dbs_admin', password='dbs_password',
+        dbname='testdb', connect_timeout=2,
+    ).close()
+    PG_AVAILABLE = True
+except Exception:
+    pass
+
+
+@unittest.skipUnless(PG_AVAILABLE, "postgres-test 未运行，跳过集成测试")
+class PostgreSQLConnectorIntegrationTest(TestCase):
+    """需要 docker-compose up postgres-test 才能运行。"""
+
+    def _make_connector(self):
+        from common.connector import PostgreSQLConnector
+        return PostgreSQLConnector('127.0.0.1', 15432, 'dbs_admin', 'dbs_password')
+
+    def test_get_databases_returns_testdb(self):
+        c = self._make_connector()
+        dbs = c.get_databases()
+        self.assertIn('testdb', dbs)
+        # 系统库不应出现
+        self.assertNotIn('postgres', dbs)
+        self.assertNotIn('template0', dbs)
+
+    def test_get_tables_empty_on_fresh_db(self):
+        c = self._make_connector()
+        tables = c.get_tables('testdb')
+        # 新建的 testdb 无用户表
+        self.assertIsInstance(tables, list)
+
+    def test_execute_sql_select_version(self):
+        c = self._make_connector()
+        results, elapsed = c.execute_sql('SELECT version()', 'testdb')
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['type'], 'resultset')
+        self.assertIn('PostgreSQL', results[0]['rows'][0][0])
+        self.assertGreater(elapsed, 0)
+
+    def test_execute_sql_multi_statement(self):
+        c = self._make_connector()
+        sql = 'SELECT 1 AS a; SELECT 2 AS b'
+        results, _ = c.execute_sql(sql, 'testdb')
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0]['rows'][0][0], 1)
+        self.assertEqual(results[1]['rows'][0][0], 2)
+
+    def test_search_databases_finds_testdb(self):
+        c = self._make_connector()
+        result = c.search_databases('testdb')
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['db_name'], 'testdb')
+
+    def test_search_databases_not_found(self):
+        c = self._make_connector()
+        result = c.search_databases('nonexistent_db_xyz')
+        self.assertEqual(result, [])
+
+    def test_search_all_databases(self):
+        c = self._make_connector()
+        result = c.search_databases('')
+        self.assertIsInstance(result, list)
+        db_names = [r['db_name'] for r in result]
+        self.assertIn('testdb', db_names)
