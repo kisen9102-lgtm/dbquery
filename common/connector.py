@@ -591,9 +591,11 @@ class MongoDBConnector(BaseConnector):
                     'sql': query,
                 }], elapsed
             elif op == 'aggregate':
-                docs = list(col.aggregate(args))
+                capped_pipeline = list(args) + [{'$limit': self.MAX_ROWS + 1}]
+                docs = list(col.aggregate(capped_pipeline))
             else:
                 raise ValueError(f'不支持的操作: {op}')
+            elapsed = round((time.time() - t0) * 1000, 1)  # computed before close
         finally:
             client.close()
 
@@ -612,7 +614,6 @@ class MongoDBConnector(BaseConnector):
             columns = ['(empty)']
 
         rows = [[str(doc.get(c, '')) for c in columns] for doc in docs]
-        elapsed = round((time.time() - t0) * 1000, 1)
         return [{
             'type': 'resultset',
             'columns': columns,
