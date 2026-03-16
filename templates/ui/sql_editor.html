@@ -327,10 +327,11 @@ function seApplyLang() {
 // ══ 从 URL 参数读取连接信息 ══
 const params = new URLSearchParams(location.search);
 const CONN = {
-  ip:     params.get('ip')      || '',
-  port:   params.get('port')    || '3306',
-  db:     params.get('db')      || '',
-  instId: params.get('inst_id') || '',
+  ip:         params.get('ip')          || '',
+  port:       params.get('port')        || '3306',
+  db:         params.get('db')          || '',
+  instId:     params.get('inst_id')     || '',
+  instanceId: params.get('instance_id') || '',
 };
 
 function updatePageTitle() {
@@ -363,7 +364,8 @@ cm.setSize('100%', '100%');
 // 加载数据库列表
 async function loadDBList() {
   try {
-    const r = await fetch(`/databases/?ip=${CONN.ip}&port=${CONN.port}`, {credentials: 'same-origin'});
+    const connParams = CONN.ip ? `ip=${CONN.ip}&port=${CONN.port}` : `instance_id=${CONN.instanceId}`;
+    const r = await fetch(`/databases/?${connParams}`, {credentials: 'same-origin'});
     const data = await r.json();
     const sel = document.getElementById('db-selector');
     sel.innerHTML = `<option value="">${st('select_db')}</option>`;
@@ -400,7 +402,8 @@ async function loadTables() {
   const tree = document.getElementById('table-tree');
   tree.innerHTML = `<div style="padding:12px;color:#475569;font-size:12px"><i class="bi bi-arrow-clockwise spin me-1"></i>${st('loading')}</div>`;
   try {
-    const r = await fetch(`/databases/tables/?ip=${CONN.ip}&port=${CONN.port}&db=${enc(db)}`, {credentials: 'same-origin'});
+    const connParams = CONN.ip ? `ip=${CONN.ip}&port=${CONN.port}` : `instance_id=${CONN.instanceId}`;
+    const r = await fetch(`/databases/tables/?${connParams}&db=${enc(db)}`, {credentials: 'same-origin'});
     const data = await r.json();
     allTables = data.tables || [];
     renderTree(allTables);
@@ -514,7 +517,9 @@ async function executeSQL(sql) {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrf()},
       credentials: 'same-origin',
-      body: JSON.stringify({ip: CONN.ip, port: parseInt(CONN.port), db, sql}),
+      body: JSON.stringify(CONN.ip
+        ? {ip: CONN.ip, port: parseInt(CONN.port), db, sql}
+        : {instance_id: CONN.instanceId, db, sql}),
     });
     const data = await r.json();
     btn.disabled = false;

@@ -1162,7 +1162,10 @@ async function deleteInstance(id) {
 
 function openEditor(inst, db) {
   const instId = inst.id + 10000;
-  const url = `/sql_editor/?ip=${enc(inst.ip)}&port=${enc(inst.port)}&inst_id=${instId}${db ? '&db=' + enc(db) : ''}`;
+  const connParams = inst.ip
+    ? `ip=${enc(inst.ip)}&port=${enc(inst.port)}`
+    : `instance_id=${inst.id}`;
+  const url = `/sql_editor/?${connParams}&inst_id=${instId}${db ? '&db=' + enc(db) : ''}`;
   window.open(url, '_blank');
 }
 
@@ -1237,7 +1240,8 @@ async function testConn(id) {
   const inst = _instances.find(i => i.id === id);
   if (!inst) return;
   try {
-    const data = await apiGet(`/databases/?ip=${enc(inst.ip)}&port=${enc(inst.port)}`);
+    const params = inst.ip ? `ip=${enc(inst.ip)}&port=${enc(inst.port)}` : `instance_id=${inst.id}`;
+    const data = await apiGet(`/databases/?${params}`);
     if (data.error) { alert(t('conn_fail') + data.message); }
     else { alert(tc('conn_ok_tpl', data.db_names.length, data.db_names.join(', '))); }
   } catch(e) { alert(t('req_fail') + e.message); }
@@ -1260,7 +1264,9 @@ async function openDbListModal(id) {
   _dbListInst = inst;
 
   // 显示弹窗（先展示 loading 状态）
-  document.getElementById('dblm-host').textContent = `${inst.remark}（${maskIP(inst.ip)}:${inst.port}）`;
+  document.getElementById('dblm-host').textContent = inst.ip
+    ? `${inst.remark}（${maskIP(inst.ip)}:${inst.port}）`
+    : inst.remark;
   document.getElementById('dblm-search').value = '';
   document.getElementById('dblm-count').textContent = '';
   document.getElementById('dblm-body').innerHTML = `
@@ -1274,7 +1280,8 @@ async function openDbListModal(id) {
 
   // 异步加载数据库列表
   try {
-    const data = await apiGet(`/databases/?ip=${enc(inst.ip)}&port=${enc(inst.port)}`);
+    const dbParams = inst.ip ? `ip=${enc(inst.ip)}&port=${enc(inst.port)}` : `instance_id=${inst.id}`;
+    const data = await apiGet(`/databases/?${dbParams}`);
     if (data.error) {
       document.getElementById('dblm-body').innerHTML = `
         <div class="text-center py-5">
