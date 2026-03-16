@@ -5,6 +5,7 @@ class Instance(models.Model):
     DB_TYPE_CHOICES = [
         ('mysql', 'MySQL'),
         ('tidb', 'TiDB'),
+        ('postgresql', 'PostgreSQL'),
     ]
     ENV_CHOICES = [
         ('prod', 'prod'),

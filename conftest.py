@@ -21,3 +21,19 @@ def pytest_configure(config):
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     }
+    # 清除 Django 连接层缓存，确保 test DB setup 使用新的 SQLite 配置
+    try:
+        from django.db import connections
+        # connections.settings 是 cached_property，删除实例缓存以强制重新读取
+        connections.__dict__.pop('settings', None)
+        connections._settings = None
+        # 清除 asgiref.local.Local 的线程存储，移除已缓存的 MySQL 连接对象
+        storage = getattr(connections._connections, '_storage', None)
+        if storage is not None:
+            for alias in list(vars(storage).keys()):
+                try:
+                    delattr(storage, alias)
+                except AttributeError:
+                    pass
+    except Exception:
+        pass
