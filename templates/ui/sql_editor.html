@@ -255,6 +255,7 @@
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/comment/comment.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/display/placeholder.min.js"></script>
 <script>
 // ══ i18n（与主页共用 localStorage('dbs_lang')）══
 const _SE_I18N = {
@@ -277,6 +278,9 @@ const _SE_I18N = {
     no_col:'无列信息',
     result_tab_tpl:'结果 {0} ({1}行)', affect_tab_tpl:'操作 {0} ({1}行)',
     exec_rows_err:'错误',
+    editor_placeholder_redis:'GET key  /  KEYS pattern  /  HGETALL key',
+    editor_placeholder_mongo:'db.collection.find({"field": "value"})',
+    coll_group:'集合',
   },
   en: {
     title:'SQL Editor', select_db:'Select database...', run:'Run', run_sel:'Run Selected',
@@ -297,6 +301,9 @@ const _SE_I18N = {
     no_col:'No columns',
     result_tab_tpl:'Result {0} ({1}r)', affect_tab_tpl:'DML {0} ({1}r)',
     exec_rows_err:'Error',
+    editor_placeholder_redis:'GET key  /  KEYS pattern  /  HGETALL key',
+    editor_placeholder_mongo:'db.collection.find({"field": "value"})',
+    coll_group:'Collections',
   },
 };
 let _seLang = localStorage.getItem('dbs_lang') || 'zh';
@@ -332,6 +339,7 @@ const CONN = {
   db:         params.get('db')          || '',
   instId:     params.get('inst_id')     || '',
   instanceId: params.get('instance_id') || '',
+  dbType:     params.get('db_type')     || 'mysql',
 };
 
 function updatePageTitle() {
@@ -358,6 +366,23 @@ const cm = CodeMirror.fromTextArea(document.getElementById('sql-editor'), {
   autofocus: true,
 });
 cm.setSize('100%', '100%');
+
+// ══ 根据 db_type 调整编辑器模式 ══
+function applyEditorMode() {
+  const isNosql = CONN.dbType === 'redis' || CONN.dbType === 'mongodb';
+  cm.setOption('mode', isNosql ? 'text/plain' : 'text/x-sql');
+  let placeholder = '';
+  if (CONN.dbType === 'redis')   placeholder = st('editor_placeholder_redis');
+  if (CONN.dbType === 'mongodb') placeholder = st('editor_placeholder_mongo');
+  // Requires addon/display/placeholder.min.js (added in Step 3)
+  if (placeholder) cm.setOption('placeholder', placeholder);
+
+  // Hide object browser for Redis (no tables concept)
+  // #left-panel is the actual element ID in sql_editor.html
+  const leftPanel = document.getElementById('left-panel');
+  if (leftPanel) leftPanel.style.display = CONN.dbType === 'redis' ? 'none' : '';
+}
+applyEditorMode();
 
 // ══ 初始化页面 ══
 
@@ -446,6 +471,24 @@ function renderTree(tables) {
       html += `<div class="tree-item" onclick="insertTable('${t.TABLE_NAME}')" title="${t.TABLE_NAME}">
         <i class="bi bi-eye" style="color:#a78bfa"></i>
         <span style="overflow:hidden;text-overflow:ellipsis">${t.TABLE_NAME}</span>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+  const collections = tables.filter(t => t.TABLE_TYPE === 'collection');
+  if (collections.length) {
+    html += `<div class="tree-group">
+      <div class="tree-group-header" onclick="toggleGroup(this)">
+        <i class="bi bi-chevron-down" style="font-size:10px"></i>
+        <i class="bi bi-collection" style="color:#4ade80"></i>${st('coll_group')} (${collections.length})
+      </div>
+      <div class="tree-children">`;
+    collections.forEach(t => {
+      const rows = t.TABLE_ROWS != null ? t.TABLE_ROWS.toLocaleString() : '?';
+      html += `<div class="tree-item" onclick="insertTable('${t.TABLE_NAME}')" title="${t.TABLE_NAME}">
+        <i class="bi bi-collection" style="color:#4ade80"></i>
+        <span style="overflow:hidden;text-overflow:ellipsis">${t.TABLE_NAME}</span>
+        <span class="tree-rows">${rows}</span>
       </div>`;
     });
     html += '</div></div>';
