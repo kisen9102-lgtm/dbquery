@@ -264,9 +264,12 @@ class PostgreSQLConnector(BaseConnector):
     def execute_sql(self, sql: str, db: str = '') -> tuple:
         import psycopg2
         import psycopg2.extras
-        dbname, _ = self._split_db_schema(db) if db else ('postgres', 'public')
+        dbname, schema = self._split_db_schema(db) if db else ('postgres', 'public')
         conn = self._connect(dbname)
         conn.autocommit = False
+        # 设置 search_path，让用户可以不加 schema 前缀直接查表
+        with conn.cursor() as cur:
+            cur.execute(f'SET search_path TO {schema}, public')
         results = []
         t0 = time.time()
         try:
