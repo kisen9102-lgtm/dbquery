@@ -348,7 +348,7 @@
           <div class="modal-body">
             <div class="alert alert-info py-2 small mb-3">
               <i class="bi bi-info-circle me-1"></i>
-              <span data-i18n="add_inst_info">连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。</span>
+              <span id="add-inst-info-sql" data-i18n="add_inst_info">连接使用统一账号 <strong>dbs_admin</strong>，请确保目标实例已创建该账号。</span><span id="add-inst-info-nosql" style="display:none" data-i18n="add_inst_info_nosql">请填写认证凭据（无密码可留空）。</span>
             </div>
             <div class="mb-3">
               <label class="form-label" data-i18n="inst_name_label">实例名</label>
@@ -364,10 +364,12 @@
             </div>
             <div class="mb-3">
               <label class="form-label" data-i18n="db_type_label">类型</label>
-              <select class="form-select" id="inst-add-dbtype">
+              <select class="form-select" id="inst-add-dbtype" onchange="onAddDbtypeChange()">
                 <option value="mysql">MySQL</option>
                 <option value="tidb">TiDB</option>
                 <option value="postgresql">PostgreSQL</option>
+                <option value="redis">Redis</option>
+                <option value="mongodb">MongoDB</option>
               </select>
             </div>
             <div class="mb-3">
@@ -377,6 +379,19 @@
                 <option value="prod" data-i18n="env_prod">生产</option>
                 <option value="dev" data-i18n="env_dev">开发</option>
               </select>
+            </div>
+            <!-- Auth fields: shown only for redis/mongodb -->
+            <div class="mb-3 auth-field-password" style="display:none">
+              <label class="form-label" data-i18n="auth_password_label">认证密码</label>
+              <input type="password" class="form-control" id="inst-add-auth-password" placeholder="">
+            </div>
+            <div class="mb-3 auth-field-username" style="display:none">
+              <label class="form-label" data-i18n="auth_username_label">认证用户名</label>
+              <input type="text" class="form-control" id="inst-add-auth-username" placeholder="">
+            </div>
+            <div class="mb-3 auth-field-source" style="display:none">
+              <label class="form-label" data-i18n="auth_source_label">Auth Source</label>
+              <input type="text" class="form-control" id="inst-add-auth-source" placeholder="admin">
             </div>
           </div>
           <div class="modal-footer">
@@ -552,10 +567,12 @@
           </div>
           <div class="col-md-3">
             <label class="form-label" data-i18n="db_type_label">类型</label>
-            <select class="form-select" id="edit-dbtype">
+            <select class="form-select" id="edit-dbtype" onchange="onEditDbtypeChange()">
               <option value="mysql">MySQL</option>
               <option value="tidb">TiDB</option>
               <option value="postgresql">PostgreSQL</option>
+              <option value="redis">Redis</option>
+              <option value="mongodb">MongoDB</option>
             </select>
           </div>
           <div class="col-md-3">
@@ -573,6 +590,19 @@
           <div class="col-md-2">
             <label class="form-label" data-i18n="port_label">端口</label>
             <input type="number" class="form-control" id="edit-port">
+          </div>
+          <!-- Auth fields: shown only for redis/mongodb -->
+          <div class="col-12 auth-field-password" style="display:none">
+            <label class="form-label" data-i18n="auth_password_label">认证密码</label>
+            <input type="password" class="form-control" id="edit-auth-password" placeholder="不修改请留空">
+          </div>
+          <div class="col-12 auth-field-username" style="display:none">
+            <label class="form-label" data-i18n="auth_username_label">认证用户名</label>
+            <input type="text" class="form-control" id="edit-auth-username" placeholder="">
+          </div>
+          <div class="col-12 auth-field-source" style="display:none">
+            <label class="form-label" data-i18n="auth_source_label">Auth Source</label>
+            <input type="text" class="form-control" id="edit-auth-source" placeholder="admin">
           </div>
         </div>
       </div>
@@ -751,7 +781,9 @@ const I18N = {
     need_inst_id:'请输入实例ID',
     inst_not_found:'未找到实例ID：',
     need_select_user:'请选择用户',
-    no_inst_go_add:'请先在「实例管理」页面添加一个 MySQL 实例，再点击「查询」按钮打开 SQL 编辑器。',
+    no_inst_go_add:'请先在「实例管理」页面添加实例，再点击「查询」按钮打开 SQL 编辑器。',
+    auth_password_label:'认证密码', auth_username_label:'认证用户名', auth_source_label:'Auth Source',
+    add_inst_info_nosql:'请填写认证凭据（无密码可留空）。',
     no_db_in_inst:'该实例暂无业务数据库',
     connecting:'连接中...',
   },
@@ -829,7 +861,9 @@ const I18N = {
     need_inst_id:'Please enter instance ID',
     inst_not_found:'Instance ID not found: ',
     need_select_user:'Please select a user',
-    no_inst_go_add:'Please add a MySQL instance in "Instances" first, then click "SQL Query" to open the editor.',
+    no_inst_go_add:'Please add an instance in "Instances" first, then click "SQL Query" to open the editor.',
+    auth_password_label:'Auth Password', auth_username_label:'Auth Username', auth_source_label:'Auth Source',
+    add_inst_info_nosql:'Enter credentials (leave blank if no auth required).',
     no_db_in_inst:'No business databases in this instance',
     connecting:'Connecting...',
   },
@@ -1144,22 +1178,31 @@ async function refreshInstances() {
 }
 
 async function addInstance() {
-  const remark  = document.getElementById('inst-remark').value.trim();
-  const ip      = document.getElementById('inst-add-ip').value.trim();
-  const port    = document.getElementById('inst-add-port').value.trim();
-  const env     = document.getElementById('inst-add-env').value;
-  const db_type = document.getElementById('inst-add-dbtype').value;
+  const remark        = document.getElementById('inst-remark').value.trim();
+  const ip            = document.getElementById('inst-add-ip').value.trim();
+  const port          = document.getElementById('inst-add-port').value.trim();
+  const env           = document.getElementById('inst-add-env').value;
+  const db_type       = document.getElementById('inst-add-dbtype').value;
+  const auth_password = document.getElementById('inst-add-auth-password').value;
+  const auth_username = document.getElementById('inst-add-auth-username').value;
+  const auth_source   = document.getElementById('inst-add-auth-source').value;
 
   if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
-    const res = await apiPost('/databases/instances/', { remark: remark || ip, ip, port, env, db_type });
+    const res = await apiPost('/databases/instances/', {
+      remark: remark || ip, ip, port, env, db_type,
+      auth_username, auth_password, auth_source,
+    });
     if (res.error) { alert(t('add_fail') + res.error); return; }
   } catch(e) { alert(t('req_fail') + e.message); return; }
 
-  document.getElementById('inst-remark').value   = '';
-  document.getElementById('inst-add-ip').value   = '';
-  document.getElementById('inst-add-port').value = '3306';
+  document.getElementById('inst-remark').value            = '';
+  document.getElementById('inst-add-ip').value            = '';
+  document.getElementById('inst-add-port').value          = '3306';
+  document.getElementById('inst-add-auth-password').value = '';
+  document.getElementById('inst-add-auth-username').value = '';
+  document.getElementById('inst-add-auth-source').value   = '';
   bootstrap.Modal.getInstance(document.getElementById('addInstModal'))?.hide();
   await refreshInstances();
 }
@@ -1177,7 +1220,8 @@ function openEditor(inst, db) {
   const connParams = inst.ip
     ? `ip=${enc(inst.ip)}&port=${enc(inst.port)}`
     : `instance_id=${inst.id}`;
-  const url = `/sql_editor/?${connParams}&inst_id=${instId}${db ? '&db=' + enc(db) : ''}`;
+  const dbType = enc(inst.db_type || 'mysql');
+  const url = `/sql_editor/?${connParams}&inst_id=${instId}&db_type=${dbType}${db ? '&db=' + enc(db) : ''}`;
   window.open(url, '_blank');
 }
 
@@ -1208,8 +1252,31 @@ function getDbTypeBadge(db_type) {
     mysql:      `<span class="tag" style="background:#e0f2fe;color:#0369a1">MySQL</span>`,
     tidb:       `<span class="tag" style="background:#fef3c7;color:#b45309">TiDB</span>`,
     postgresql: `<span class="tag" style="background:#e9d5ff;color:#7c3aed">PostgreSQL</span>`,
+    redis:      `<span class="tag" style="background:#fee2e2;color:#b91c1c">Redis</span>`,
+    mongodb:    `<span class="tag" style="background:#dcfce7;color:#15803d">MongoDB</span>`,
   };
   return map[db_type] || `<span class="tag">${db_type || 'mysql'}</span>`;
+}
+
+function _toggleAuthFields(dbType, prefix) {
+  const isNosql = dbType === 'redis' || dbType === 'mongodb';
+  const isMongo = dbType === 'mongodb';
+  const modal = document.getElementById(prefix === 'inst-add' ? 'addInstModal' : 'editModal');
+  modal.querySelectorAll('.auth-field-password').forEach(el => el.style.display = isNosql ? '' : 'none');
+  modal.querySelectorAll('.auth-field-username').forEach(el => el.style.display = isMongo ? '' : 'none');
+  modal.querySelectorAll('.auth-field-source').forEach(el =>   el.style.display = isMongo ? '' : 'none');
+  if (prefix === 'inst-add') {
+    const infoSql   = document.getElementById('add-inst-info-sql');
+    const infoNosql = document.getElementById('add-inst-info-nosql');
+    if (infoSql)   infoSql.style.display   = isNosql ? 'none' : '';
+    if (infoNosql) infoNosql.style.display = isNosql ? '' : 'none';
+  }
+}
+function onAddDbtypeChange() {
+  _toggleAuthFields(document.getElementById('inst-add-dbtype').value, 'inst-add');
+}
+function onEditDbtypeChange() {
+  _toggleAuthFields(document.getElementById('edit-dbtype').value, 'edit');
 }
 
 function renderInstances() {
@@ -1355,28 +1422,38 @@ let _editModal = null;
 function openEditModal(id) {
   const inst = _instances.find(i => i.id === id);
   if (!inst) return;
-  document.getElementById('edit-id').value      = inst.id;
-  document.getElementById('edit-remark').value  = inst.remark;
-  document.getElementById('edit-ip').value      = inst.ip;
-  document.getElementById('edit-port').value    = inst.port;
-  document.getElementById('edit-env').value     = inst.env || 'test';
-  document.getElementById('edit-dbtype').value  = inst.db_type || 'mysql';
+  document.getElementById('edit-id').value            = inst.id;
+  document.getElementById('edit-remark').value        = inst.remark;
+  document.getElementById('edit-ip').value            = inst.ip || '';
+  document.getElementById('edit-port').value          = inst.port || '';
+  document.getElementById('edit-env').value           = inst.env || 'test';
+  document.getElementById('edit-dbtype').value        = inst.db_type || 'mysql';
+  document.getElementById('edit-auth-username').value = inst.auth_username || '';
+  document.getElementById('edit-auth-source').value   = inst.auth_source || '';
+  document.getElementById('edit-auth-password').value = '';  // never pre-fill password
+  _toggleAuthFields(inst.db_type || 'mysql', 'edit');
   if (!_editModal) _editModal = new bootstrap.Modal(document.getElementById('editModal'));
   _editModal.show();
 }
 
 async function saveEdit() {
-  const id      = parseInt(document.getElementById('edit-id').value);
-  const remark  = document.getElementById('edit-remark').value.trim();
-  const ip      = document.getElementById('edit-ip').value.trim();
-  const port    = document.getElementById('edit-port').value.trim();
-  const env     = document.getElementById('edit-env').value;
-  const db_type = document.getElementById('edit-dbtype').value;
+  const id            = parseInt(document.getElementById('edit-id').value);
+  const remark        = document.getElementById('edit-remark').value.trim();
+  const ip            = document.getElementById('edit-ip').value.trim();
+  const port          = document.getElementById('edit-port').value.trim();
+  const env           = document.getElementById('edit-env').value;
+  const db_type       = document.getElementById('edit-dbtype').value;
+  const auth_username = document.getElementById('edit-auth-username').value;
+  const auth_password = document.getElementById('edit-auth-password').value;
+  const auth_source   = document.getElementById('edit-auth-source').value;
 
   if (!ip || !port) { alert(t('need_ip_port')); return; }
 
   try {
-    const res = await apiPut(`/databases/instances/${id}/`, { remark: remark || ip, ip, port, env, db_type });
+    const res = await apiPut(`/databases/instances/${id}/`, {
+      remark: remark || ip, ip, port, env, db_type,
+      auth_username, auth_password, auth_source,
+    });
     if (res.error) { alert(t('save_fail') + res.error); return; }
   } catch(e) { alert(t('req_fail') + e.message); return; }
 
