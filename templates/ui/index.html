@@ -362,6 +362,7 @@
             <select class="form-select" id="inst-add-dbtype">
               <option value="mysql">MySQL</option>
               <option value="tidb">TiDB</option>
+              <option value="postgresql">PostgreSQL</option>
             </select>
           </div>
           <div class="col-md-2">
@@ -543,6 +544,7 @@
             <select class="form-select" id="edit-dbtype">
               <option value="mysql">MySQL</option>
               <option value="tidb">TiDB</option>
+              <option value="postgresql">PostgreSQL</option>
             </select>
           </div>
           <div class="col-md-3">
@@ -1188,8 +1190,9 @@ function getEnvBadge(env) {
 
 function getDbTypeBadge(db_type) {
   const map = {
-    mysql: `<span class="tag" style="background:#e0f2fe;color:#0369a1">MySQL</span>`,
-    tidb:  `<span class="tag" style="background:#fef3c7;color:#b45309">TiDB</span>`,
+    mysql:      `<span class="tag" style="background:#e0f2fe;color:#0369a1">MySQL</span>`,
+    tidb:       `<span class="tag" style="background:#fef3c7;color:#b45309">TiDB</span>`,
+    postgresql: `<span class="tag" style="background:#e9d5ff;color:#7c3aed">PostgreSQL</span>`,
   };
   return map[db_type] || `<span class="tag">${db_type || 'mysql'}</span>`;
 }
