@@ -249,6 +249,35 @@ class RedisConnectorUnitTest(TestCase):
 
         self.assertEqual(results[0]['rows'], [['(nil)']])
 
+    @patch('common.connector.redis')
+    def test_execute_sql_scan_extracts_keys(self, mock_redis_module):
+        mock_client = MagicMock()
+        # SCAN returns [cursor, [key1, key2]]
+        mock_client.execute_command.return_value = ['7', ['key1', 'key2', 'key3']]
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, _ = c.execute_sql('SCAN 0', 'db0')
+
+        self.assertEqual(results[0]['columns'], ['index', 'value'])
+        # Should show the keys, not the cursor
+        self.assertEqual(len(results[0]['rows']), 3)
+        self.assertEqual(results[0]['rows'][0], [0, 'key1'])
+
+    @patch('common.connector.redis')
+    def test_execute_sql_respects_max_rows(self, mock_redis_module):
+        mock_client = MagicMock()
+        # Return more than MAX_ROWS items
+        mock_client.execute_command.return_value = [f'key{i}' for i in range(1500)]
+        mock_redis_module.Redis.return_value = mock_client
+
+        c = self._make_connector()
+        results, _ = c.execute_sql('KEYS *', 'db0')
+
+        self.assertTrue(results[0]['limited'])
+        self.assertEqual(results[0]['row_count'], c.MAX_ROWS)
+        self.assertEqual(len(results[0]['rows']), c.MAX_ROWS)
+
 
 import unittest
 

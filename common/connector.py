@@ -393,7 +393,7 @@ SAFE_REDIS_COMMANDS = frozenset({
     'lrange', 'llen', 'lindex',
     'scard', 'smembers', 'srandmember', 'sismember',
     'zrange', 'zrangebyscore', 'zrevrange', 'zcard', 'zscore', 'zrank',
-    'object', 'dump',
+    'object',
 })
 
 
@@ -449,12 +449,15 @@ class RedisConnector(BaseConnector):
         elapsed = round((time.time() - t0) * 1000, 1)
 
         columns, rows = self._format_result(command, result)
+        limited = len(rows) > self.MAX_ROWS
+        if limited:
+            rows = rows[:self.MAX_ROWS]
         return [{
             'type': 'resultset',
             'columns': columns,
             'rows': rows,
             'row_count': len(rows),
-            'limited': False,
+            'limited': limited,
             'sql': command,
         }], elapsed
 
@@ -464,6 +467,11 @@ class RedisConnector(BaseConnector):
             return ['result'], [['(nil)']]
         if isinstance(result, dict):
             return ['field', 'value'], [[k, str(v)] for k, v in result.items()]
+        # SCAN-type response: [cursor, [key1, key2, ...]]
+        if (isinstance(result, list) and len(result) == 2
+                and isinstance(result[0], str) and isinstance(result[1], list)):
+            rows = [[i, str(v)] for i, v in enumerate(result[1])]
+            return ['index', 'value'], rows
         if isinstance(result, list):
             return ['index', 'value'], [[i, str(v)] for i, v in enumerate(result)]
         return ['result'], [[str(result)]]
