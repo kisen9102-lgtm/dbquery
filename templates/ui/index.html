@@ -149,12 +149,6 @@
       <i class="bi bi-terminal"></i><span data-i18n="nav_sql_query">SQL 查询</span>
     </div>
 
-    <div class="menu-label nonquery-menu" style="display:none" data-i18n="nav_cluster">集群</div>
-    <div class="menu-item nonquery-menu" data-panel="cluster-query" style="display:none">
-      <i class="bi bi-diagram-3"></i><span data-i18n="nav_topology">拓扑角色查询</span>
-    </div>
-
-
     <div class="menu-label admin-menu" style="display:none" data-i18n="nav_admin">系统管理</div>
     <div class="menu-item admin-menu" data-panel="users" style="display:none">
       <i class="bi bi-people"></i><span data-i18n="nav_users">用户管理</span>
@@ -245,8 +239,7 @@
               <thead><tr><th data-i18n="api_endpoint">接口</th><th data-i18n="api_method">方法</th><th data-i18n="api_auth">鉴权</th></tr></thead>
               <tbody>
                 <tr><td>/databases/</td><td><span class="tag tag-ok">GET</span></td><td data-i18n="api_no_auth">无</td></tr>
-                <tr><td>/clusters/query_arch/</td><td><span class="tag tag-ok">GET</span></td><td data-i18n="api_ip_wl">IP 白名单</td></tr>
-              </tbody>
+</tbody>
             </table>
           </div>
         </div>
@@ -306,31 +299,6 @@
         </div>
         <div id="dbs-empty" class="text-muted small" style="display:none" data-i18n="no_db_found">未找到匹配的数据库。</div>
         <div id="dbs-error" class="alert alert-danger py-2 small" style="display:none"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 集群拓扑角色查询 ── -->
-  <div class="panel" id="panel-cluster-query">
-    <div class="card">
-      <div class="card-header"><i class="bi bi-diagram-3 me-2"></i><span data-i18n="cluster_title">集群拓扑角色查询</span></div>
-      <div class="card-body">
-        <div class="row g-3 mb-3 align-items-end">
-          <div class="col-md-4">
-            <label class="form-label">MySQL IP</label>
-            <input type="text" class="form-control" id="cq-ip" value="127.0.0.1">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label" data-i18n="port_label">端口</label>
-            <input type="number" class="form-control" id="cq-port" value="3306">
-          </div>
-          <div class="col-md-2">
-            <button class="btn btn-primary w-100" onclick="queryArch()">
-              <i class="bi bi-search me-1"></i><span data-i18n="search_btn">查询</span>
-            </button>
-          </div>
-        </div>
-        <div class="result-box" id="cq-result"></div>
       </div>
     </div>
   </div>
@@ -711,7 +679,6 @@ const I18N = {
     page_title:'DBS 运维管理平台', brand:'DBS 运维平台',
     nav_overview:'概览', nav_dashboard:'控制台', nav_database:'数据库',
     nav_db_search:'数据库查询', nav_instances:'实例管理', nav_sql_query:'SQL 查询',
-    nav_cluster:'集群', nav_topology:'拓扑角色查询',
     nav_admin:'系统管理', nav_users:'用户管理', nav_groups:'用户组管理',
     svc_running:'服务运行中 · 端口 8000', test_env:'测试环境', logout:'退出',
     stat_dbs:'业务数据库数', stat_running:'运行中', stat_django:'Django 服务状态',
@@ -725,7 +692,6 @@ const I18N = {
     col_inst_name:'实例名', col_inst_id:'实例ID', col_env:'环境',
     col_db_name:'数据库名', col_tables:'表数量', col_size:'大小 (MB)',
     no_db_found:'未找到匹配的数据库。',
-    cluster_title:'集群拓扑角色查询',
     add_inst_title:'添加实例',
     add_inst_info:'连接使用统一账号 dbs_admin，请确保目标实例已创建该账号。',
     inst_name_label:'实例名', ip_label:'IP 地址', env_label:'环境',
@@ -755,14 +721,6 @@ const I18N = {
     role_root_lbl:'root', role_admin_lbl:'管理员', role_query_lbl:'查询用户',
     superuser:'超级用户',
     env_prod_tag:'生产', env_test_tag:'测试', env_dev_tag:'开发',
-    topo_master:'主库 Master', topo_slave:'从库 Slave', topo_standalone:'独立节点',
-    topo_normal:'正常', topo_abnormal:'异常', topo_ro:'只读', topo_rw:'读写',
-    topo_node:'节点', topo_role:'角色', topo_status:'状态', topo_rw_mode:'读写模式',
-    topo_server_id:'Server ID', topo_mysql_ver:'MySQL 版本', topo_gtid:'GTID 模式',
-    topo_master_addr:'主库地址', topo_io:'IO 线程', topo_sql:'SQL 线程',
-    topo_lag:'复制延迟', topo_lag_unit:' 秒', topo_err_info:'错误信息',
-    topo_slaves:'从库连接', topo_no_slave:'无从库连接', topo_no_data:'无数据',
-    topo_querying:'查询中...',
     inst_count_tpl:'共 {0} 个', db_count_tpl:'共 {0} 个数据库',
     found_tpl:'共找到 {0} 条记录',
     conn_ok_tpl:'连接成功！找到 {0} 个业务数据库：\n{1}',
@@ -791,7 +749,6 @@ const I18N = {
     page_title:'DBS Ops Platform', brand:'DBS Ops Platform',
     nav_overview:'Overview', nav_dashboard:'Dashboard', nav_database:'Database',
     nav_db_search:'DB Search', nav_instances:'Instances', nav_sql_query:'SQL Query',
-    nav_cluster:'Cluster', nav_topology:'Topology Query',
     nav_admin:'Admin', nav_users:'Users', nav_groups:'Groups',
     svc_running:'Service running · Port 8000', test_env:'Test Env', logout:'Logout',
     stat_dbs:'Business DBs', stat_running:'Running', stat_django:'Django Status',
@@ -805,7 +762,6 @@ const I18N = {
     col_inst_name:'Instance', col_inst_id:'Instance ID', col_env:'Env',
     col_db_name:'DB Name', col_tables:'Tables', col_size:'Size (MB)',
     no_db_found:'No matching database found.',
-    cluster_title:'Cluster Topology Query',
     add_inst_title:'Add Instance',
     add_inst_info:'Connection uses unified account dbs_admin. Ensure the target instance has this account.',
     inst_name_label:'Instance Name', ip_label:'IP Address', env_label:'Environment',
@@ -835,14 +791,6 @@ const I18N = {
     role_root_lbl:'root', role_admin_lbl:'Admin', role_query_lbl:'Query User',
     superuser:'Superuser',
     env_prod_tag:'Prod', env_test_tag:'Test', env_dev_tag:'Dev',
-    topo_master:'Master', topo_slave:'Slave', topo_standalone:'Standalone',
-    topo_normal:'Normal', topo_abnormal:'Abnormal', topo_ro:'Read-only', topo_rw:'Read-write',
-    topo_node:'Node', topo_role:'Role', topo_status:'Status', topo_rw_mode:'R/W Mode',
-    topo_server_id:'Server ID', topo_mysql_ver:'MySQL Version', topo_gtid:'GTID Mode',
-    topo_master_addr:'Master Address', topo_io:'IO Thread', topo_sql:'SQL Thread',
-    topo_lag:'Replication Lag', topo_lag_unit:'s', topo_err_info:'Error Info',
-    topo_slaves:'Slave Connections', topo_no_slave:'No slave connections', topo_no_data:'No data',
-    topo_querying:'Querying...',
     inst_count_tpl:'{0} total', db_count_tpl:'{0} databases',
     found_tpl:'Found {0} records',
     conn_ok_tpl:'Connected! Found {0} business databases:\n{1}',
@@ -936,7 +884,6 @@ const _PANEL_I18N = {
   'dashboard': 'nav_dashboard',
   'db-search': 'nav_db_search',
   'instances': 'nav_instances',
-  'cluster-query': 'nav_topology',
   'users': 'nav_users',
   'groups': 'nav_groups',
 };
@@ -1087,83 +1034,6 @@ async function searchDatabases() {
     document.getElementById('dbs-error').style.display = '';
   }
 }
-
-// ══ 基础信息 ══
-// ══ 集群拓扑角色查询 ══
-async function queryArch() {
-  const ip   = document.getElementById('cq-ip').value.trim();
-  const port = document.getElementById('cq-port').value.trim();
-  const box  = document.getElementById('cq-result');
-  box.style.display = 'block';
-  box.className = 'result-box';
-  box.innerHTML = `<span class="text-muted">${t('topo_querying')}</span>`;
-  try {
-    const data = await apiGet(`/clusters/query_arch/?ip=${ip}&port=${port}`);
-    if (data.error) {
-      box.className = 'result-box result-error';
-      box.textContent = data.message;
-      return;
-    }
-    box.className = 'result-box result-ok';
-    box.innerHTML = renderTopology(ip, port, data.nodes);
-  } catch(e) {
-    box.className = 'result-box result-error';
-    box.textContent = e.message;
-  }
-}
-
-function renderTopology(ip, port, nodes) {
-  if (!nodes || !nodes.length) return `<span class="text-muted">${t('topo_no_data')}</span>`;
-  const n = nodes[0];
-  const roleBadge = {
-    master:     `<span class="badge bg-danger">${t('topo_master')}</span>`,
-    slave:      `<span class="badge bg-primary">${t('topo_slave')}</span>`,
-    standalone: `<span class="badge bg-secondary">${t('topo_standalone')}</span>`,
-  }[n.role] || '';
-  const statusBadge = n.status === 1
-    ? `<span class="badge bg-success">${t('topo_normal')}</span>`
-    : `<span class="badge bg-warning text-dark">${t('topo_abnormal')}</span>`;
-  const roSwitch = n.read_only
-    ? `<span class="badge bg-secondary">${t('topo_ro')}</span>`
-    : `<span class="badge bg-success">${t('topo_rw')}</span>`;
-
-  let html = `
-    <table class="table table-sm mb-3" style="max-width:600px">
-      <tbody>
-        <tr><th style="width:130px">${t('topo_node')}</th><td><code>${ip}:${port}</code></td></tr>
-        <tr><th>${t('topo_role')}</th><td>${roleBadge}</td></tr>
-        <tr><th>${t('topo_status')}</th><td>${statusBadge} ${n.comment ? `<span class="text-danger small">${n.comment}</span>` : ''}</td></tr>
-        <tr><th>${t('topo_rw_mode')}</th><td>${roSwitch}</td></tr>
-        <tr><th>${t('topo_server_id')}</th><td>${n.server_id ?? '-'}</td></tr>
-        <tr><th>${t('topo_mysql_ver')}</th><td>${n.version || '-'}</td></tr>
-        <tr><th>${t('topo_gtid')}</th><td>${n.gtid_mode || '-'}</td></tr>`;
-
-  if (n.role === 'slave') {
-    const ioOk  = n.io_running?.toLowerCase()  === 'yes';
-    const sqlOk = n.sql_running?.toLowerCase() === 'yes';
-    html += `
-        <tr><th>${t('topo_master_addr')}</th><td><code>${n.master_host}:${n.master_port}</code></td></tr>
-        <tr><th>${t('topo_io')}</th><td><span class="badge ${ioOk  ? 'bg-success' : 'bg-danger'}">${n.io_running}</span></td></tr>
-        <tr><th>${t('topo_sql')}</th><td><span class="badge ${sqlOk ? 'bg-success' : 'bg-danger'}">${n.sql_running}</span></td></tr>
-        <tr><th>${t('topo_lag')}</th><td>${n.seconds_behind != null ? n.seconds_behind + t('topo_lag_unit') : '-'}</td></tr>
-        ${n.last_error ? `<tr><th>${t('topo_err_info')}</th><td class="text-danger small">${n.last_error}</td></tr>` : ''}`;
-  }
-
-  if (n.role === 'master' || n.role === 'standalone') {
-    const slaves = n.slaves || [];
-    if (slaves.length) {
-      html += `<tr><th>${t('topo_slaves')}</th><td>${slaves.map(s =>
-        `<code>${s.host}</code> <span class="text-muted small">(${s.state || s.command})</span>`
-      ).join('<br>')}</td></tr>`;
-    } else {
-      html += `<tr><th>${t('topo_slaves')}</th><td class="text-muted">${t('topo_no_slave')}</td></tr>`;
-    }
-  }
-
-  html += '</tbody></table>';
-  return html;
-}
-
 
 // ══ 实例管理（API 后端） ══
 let _instances = [];
