@@ -307,12 +307,28 @@ class PostgreSQLConnector(BaseConnector):
             return self._search_databases_single(db_name)
         return self._search_all()
 
+    def _get_schemas(self, dbname: str) -> list:
+        """返回指定库的所有用户 schema 名列表。"""
+        db_conn = self._connect(dbname)
+        try:
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    "SELECT schema_name FROM information_schema.schemata"
+                    " WHERE schema_name NOT IN ('pg_catalog','information_schema')"
+                    "   AND schema_name NOT LIKE 'pg_%'"
+                    " ORDER BY schema_name"
+                )
+                return [r[0] for r in cur.fetchall()]
+        finally:
+            db_conn.close()
+
     def _search_databases_single(self, db_name: str) -> list:
         # 支持搜索词为 'testdb' 或 'testdb_public' 两种形式
-        real_db, schema = self._split_db_schema(db_name)
+        real_db, target_schema = self._split_db_schema(db_name)
+        # 如果输入本身就是一个纯库名（无下划线或库名在 pg_database 中），优先作为库名处理
         if real_db in PG_SYSTEM_DBS:
             return []
-        db_name = real_db  # 后续用真实库名查询
+
         conn = self._connect()
         try:
             with conn.cursor() as cur:
@@ -320,7 +336,7 @@ class PostgreSQLConnector(BaseConnector):
                     "SELECT ROUND(pg_database_size(%s)/1024.0/1024.0,2)"
                     " FROM pg_catalog.pg_database"
                     " WHERE datname=%s AND datistemplate=false",
-                    (db_name, db_name)
+                    (real_db, real_db)
                 )
                 row = cur.fetchone()
                 if not row:
@@ -329,18 +345,29 @@ class PostgreSQLConnector(BaseConnector):
         finally:
             conn.close()
 
-        conn2 = self._connect(db_name)
-        try:
-            with conn2.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) FROM information_schema.tables"
-                    " WHERE table_schema='public'"
-                )
-                table_count = cur.fetchone()[0]
-        finally:
-            conn2.close()
+        # 如果搜索词包含下划线且 target_schema 有意义，只返回指定 schema
+        # 否则返回该库下所有 schema
+        all_schemas = self._get_schemas(real_db)
+        if '_' in db_name and target_schema in all_schemas:
+            schemas = [target_schema]
+        else:
+            schemas = all_schemas
 
-        return [{'db_name': f"{db_name}_public", 'table_count': table_count, 'size_mb': size_mb}]
+        result = []
+        for schema in schemas:
+            db_conn = self._connect(real_db)
+            try:
+                with db_conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM information_schema.tables"
+                        " WHERE table_schema=%s",
+                        (schema,)
+                    )
+                    table_count = cur.fetchone()[0]
+            finally:
+                db_conn.close()
+            result.append({'db_name': f"{real_db}_{schema}", 'table_count': table_count, 'size_mb': size_mb})
+        return result
 
     def _search_all(self) -> list:
         conn = self._connect()
@@ -356,9 +383,12 @@ class PostgreSQLConnector(BaseConnector):
                 rows = cur.fetchall()
         finally:
             conn.close()
-        # table_count=-1 表示"未统计"，前端显示 '-'
-        return [{'db_name': f"{r[0]}_public", 'table_count': -1, 'size_mb': float(r[1] or 0)}
-                for r in rows]
+
+        result = []
+        for datname, size_mb in rows:
+            for schema in self._get_schemas(datname):
+                result.append({'db_name': f"{datname}_{schema}", 'table_count': -1, 'size_mb': float(size_mb or 0)})
+        return result
 
 
 def get_connector(db_type: str, host: str, port: int,
