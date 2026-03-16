@@ -231,15 +231,81 @@
     </div>
 
     <div class="row g-3">
-      <div class="col-md-6">
+      <div class="col-12">
         <div class="card">
-          <div class="card-header" data-i18n="api_list">接口清单</div>
-          <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-              <thead><tr><th data-i18n="api_endpoint">接口</th><th data-i18n="api_method">方法</th><th data-i18n="api_auth">鉴权</th></tr></thead>
+          <div class="card-header"><i class="bi bi-grid me-2"></i><span data-i18n="guide_title">功能简介</span></div>
+          <div class="card-body">
+            <p class="text-muted mb-3" data-i18n="guide_intro">本平台支持多种数据库的在线查询与管理，根据角色不同可使用以下功能：</p>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-search fs-5 text-primary mt-1"></i>
+                  <div>
+                    <div class="fw-semibold" data-i18n="guide_f1_title">数据库查询</div>
+                    <div class="text-muted small" data-i18n="guide_f1_desc">按数据库名或 IP + 端口跨实例检索，快速定位数据库所在实例。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-terminal fs-5 text-success mt-1"></i>
+                  <div>
+                    <div class="fw-semibold" data-i18n="guide_f2_title">SQL 查询</div>
+                    <div class="text-muted small" data-i18n="guide_f2_desc">在线编辑器支持 MySQL / TiDB / PostgreSQL / Redis / MongoDB，可浏览对象、多语句执行并导出结果。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-hdd-stack fs-5 text-warning mt-1"></i>
+                  <div>
+                    <div class="fw-semibold" data-i18n="guide_f3_title">实例管理</div>
+                    <div class="text-muted small" data-i18n="guide_f3_desc">注册、编辑、删除各类数据库实例，支持测试连接。仅 admin / root 可操作。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-people fs-5 text-info mt-1"></i>
+                  <div>
+                    <div class="fw-semibold" data-i18n="guide_f4_title">用户管理</div>
+                    <div class="text-muted small" data-i18n="guide_f4_desc">创建用户并分配角色（root / admin / query），修改密码。仅 admin / root 可操作。</div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-collection fs-5 text-secondary mt-1"></i>
+                  <div>
+                    <div class="fw-semibold" data-i18n="guide_f5_title">用户组管理</div>
+                    <div class="text-muted small" data-i18n="guide_f5_desc">将实例与用户组绑定，控制 query 用户可见的实例范围。仅 admin / root 可操作。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="fw-semibold mb-2" data-i18n="guide_roles_title">角色说明</div>
+            <table class="table table-sm table-bordered mb-0" style="max-width:640px">
+              <thead class="table-light">
+                <tr>
+                  <th data-i18n="guide_role_col">角色</th>
+                  <th data-i18n="guide_perm_col">权限说明</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td>/databases/</td><td><span class="tag tag-ok">GET</span></td><td data-i18n="api_no_auth">无</td></tr>
-</tbody>
+                <tr>
+                  <td><span class="badge bg-danger">root</span></td>
+                  <td><span data-i18n="guide_role_root">全部权限，不受任何限制。</span></td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-warning text-dark">admin</span></td>
+                  <td><span data-i18n="guide_role_admin">可管理实例、用户、用户组；不可修改 root 账号。</span></td>
+                </tr>
+                <tr>
+                  <td><span class="badge bg-primary">query</span></td>
+                  <td><span data-i18n="guide_role_query">只读查询；只能看到所属用户组内的实例；实例 IP / 端口不可见。</span></td>
+                </tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -684,8 +750,17 @@ const I18N = {
     stat_dbs:'业务数据库数', stat_running:'运行中', stat_django:'Django 服务状态',
     stat_mysql_ver:'MySQL 版本', stat_fixed:'已修复', stat_sql_risk:'SQL 注入 / 注入风险',
 
-    api_list:'接口清单', api_endpoint:'接口', api_method:'方法', api_auth:'鉴权',
-    api_no_auth:'无', api_ip_wl:'IP 白名单',
+    guide_title:'功能简介',
+    guide_intro:'本平台支持多种数据库的在线查询与管理，根据角色不同可使用以下功能：',
+    guide_f1_title:'数据库查询', guide_f1_desc:'按数据库名或 IP + 端口跨实例检索，快速定位数据库所在实例。',
+    guide_f2_title:'SQL 查询', guide_f2_desc:'在线编辑器支持 MySQL / TiDB / PostgreSQL / Redis / MongoDB，可浏览对象、多语句执行并导出结果。',
+    guide_f3_title:'实例管理', guide_f3_desc:'注册、编辑、删除各类数据库实例，支持测试连接。仅 admin / root 可操作。',
+    guide_f4_title:'用户管理', guide_f4_desc:'创建用户并分配角色（root / admin / query），修改密码。仅 admin / root 可操作。',
+    guide_f5_title:'用户组管理', guide_f5_desc:'将实例与用户组绑定，控制 query 用户可见的实例范围。仅 admin / root 可操作。',
+    guide_roles_title:'角色说明', guide_role_col:'角色', guide_perm_col:'权限说明',
+    guide_role_root:'全部权限，不受任何限制。',
+    guide_role_admin:'可管理实例、用户、用户组；不可修改 root 账号。',
+    guide_role_query:'只读查询；只能看到所属用户组内的实例；实例 IP / 端口不可见。',
     db_search_title:'数据库查询', db_name_label:'数据库名称', or_text:'或',
     inst_ip_label:'实例 IP', port_label:'端口', search_btn:'查询',
     searching_msg:'正在查询各实例，请稍候…',
@@ -754,8 +829,17 @@ const I18N = {
     stat_dbs:'Business DBs', stat_running:'Running', stat_django:'Django Status',
     stat_mysql_ver:'MySQL Version', stat_fixed:'Fixed', stat_sql_risk:'SQL Injection Risk',
 
-    api_list:'API List', api_endpoint:'Endpoint', api_method:'Method', api_auth:'Auth',
-    api_no_auth:'None', api_ip_wl:'IP Whitelist',
+    guide_title:'Features',
+    guide_intro:'This platform supports online query and management of multiple database types. Available features depend on your role:',
+    guide_f1_title:'DB Search', guide_f1_desc:'Search databases by name or IP + port across all instances.',
+    guide_f2_title:'SQL Query', guide_f2_desc:'Online editor supporting MySQL / TiDB / PostgreSQL / Redis / MongoDB with object browser, multi-statement execution, and CSV export.',
+    guide_f3_title:'Instance Management', guide_f3_desc:'Register, edit, and delete database instances with connection testing. Admin / root only.',
+    guide_f4_title:'User Management', guide_f4_desc:'Create users and assign roles (root / admin / query). Admin / root only.',
+    guide_f5_title:'Group Management', guide_f5_desc:'Bind instances to groups to control which instances query users can see. Admin / root only.',
+    guide_roles_title:'Roles', guide_role_col:'Role', guide_perm_col:'Permissions',
+    guide_role_root:'Full access, no restrictions.',
+    guide_role_admin:'Manage instances, users, and groups. Cannot modify root account.',
+    guide_role_query:'Read-only queries; can only see instances in assigned groups; instance IP / port is hidden.',
     db_search_title:'Database Search', db_name_label:'Database Name', or_text:'or',
     inst_ip_label:'Instance IP', port_label:'Port', search_btn:'Search',
     searching_msg:'Querying instances, please wait…',
