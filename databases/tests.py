@@ -245,3 +245,21 @@ class DatabaseSearchViewTest(TestCase):
             self.assertNotIn('port', item)
             self.assertIn('id', item)
             self.assertIn('remark', item)
+
+
+class InstanceAuthFieldsTest(TestCase):
+    def test_instance_has_auth_fields(self):
+        from databases.models import Instance
+        inst = Instance.objects.create(
+            ip='10.0.0.1', port=6379, db_type='redis',
+            auth_username='', auth_password='secret', auth_source='',
+        )
+        self.assertEqual(inst.auth_password, 'secret')
+        self.assertEqual(inst.auth_username, '')
+        self.assertEqual(inst.auth_source, '')
+
+    def test_redis_and_mongodb_are_valid_db_types(self):
+        from databases.models import Instance
+        valid_types = [c[0] for c in Instance.DB_TYPE_CHOICES]
+        self.assertIn('redis', valid_types)
+        self.assertIn('mongodb', valid_types)

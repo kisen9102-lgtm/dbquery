@@ -6,6 +6,8 @@ class Instance(models.Model):
         ('mysql', 'MySQL'),
         ('tidb', 'TiDB'),
         ('postgresql', 'PostgreSQL'),
+        ('redis', 'Redis'),
+        ('mongodb', 'MongoDB'),
     ]
     ENV_CHOICES = [
         ('prod', 'prod'),
@@ -13,13 +15,16 @@ class Instance(models.Model):
         ('dev', 'dev'),
     ]
 
-    remark     = models.CharField(max_length=128, blank=True, default='')
-    ip         = models.GenericIPAddressField()
-    port       = models.PositiveIntegerField()
-    env        = models.CharField(max_length=16, choices=ENV_CHOICES, default='test')
-    db_type    = models.CharField(max_length=16, choices=DB_TYPE_CHOICES, default='mysql')
-    created_by = models.CharField(max_length=64, blank=True, default='')
-    created_at = models.DateTimeField(auto_now_add=True)
+    remark        = models.CharField(max_length=128, blank=True, default='')
+    ip            = models.GenericIPAddressField()
+    port          = models.PositiveIntegerField()
+    env           = models.CharField(max_length=16, choices=ENV_CHOICES, default='test')
+    db_type       = models.CharField(max_length=16, choices=DB_TYPE_CHOICES, default='mysql')
+    auth_username = models.CharField(max_length=128, blank=True, default='')
+    auth_password = models.CharField(max_length=256, blank=True, default='')
+    auth_source   = models.CharField(max_length=64,  blank=True, default='')
+    created_by    = models.CharField(max_length=64, blank=True, default='')
+    created_at    = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'dbs_instances'
