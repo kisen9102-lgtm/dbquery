@@ -420,3 +420,105 @@ class PostgreSQLConnectorIntegrationTest(TestCase):
         self.assertIsInstance(result, list)
         db_names = [r['db_name'] for r in result]
         self.assertIn('testdb_public', db_names)
+
+REDIS_AVAILABLE = False
+try:
+    import redis as redis_lib
+    redis_lib.Redis(host='127.0.0.1', port=16379, socket_connect_timeout=2).ping()
+    REDIS_AVAILABLE = True
+except Exception:
+    pass
+
+MONGO_AVAILABLE = False
+try:
+    import pymongo as pymongo_lib
+    pymongo_lib.MongoClient(
+        host='127.0.0.1', port=27117,
+        username='dbs_admin', password='Dbs@Admin2026',
+        serverSelectionTimeoutMS=2000,
+    ).admin.command('ping')
+    MONGO_AVAILABLE = True
+except Exception:
+    pass
+
+
+@unittest.skipUnless(REDIS_AVAILABLE, "redis-test 未运行，跳过集成测试")
+class RedisConnectorIntegrationTest(TestCase):
+    def _make_connector(self):
+        from common.connector import RedisConnector
+        return RedisConnector('127.0.0.1', 16379, '', '')
+
+    def test_get_databases_returns_16_dbs(self):
+        c = self._make_connector()
+        dbs = c.get_databases()
+        self.assertEqual(len(dbs), 16)
+        self.assertIn('db0', dbs)
+
+    def test_execute_get_missing_key_returns_nil(self):
+        c = self._make_connector()
+        results, elapsed = c.execute_sql('GET __nonexistent_test_key__', 'db0')
+        self.assertEqual(results[0]['type'], 'resultset')
+        self.assertEqual(results[0]['rows'][0][0], '(nil)')
+        self.assertGreater(elapsed, 0)
+
+    def test_execute_info_returns_string(self):
+        c = self._make_connector()
+        results, _ = c.execute_sql('INFO server', 'db0')
+        self.assertIn('redis_version', results[0]['rows'][0][0])
+
+    def test_execute_del_raises_permission_error(self):
+        c = self._make_connector()
+        with self.assertRaises(PermissionError):
+            c.execute_sql('DEL somekey', 'db0')
+
+    def test_execute_keys_returns_list_format(self):
+        c = self._make_connector()
+        results, _ = c.execute_sql('KEYS *', 'db0')
+        self.assertEqual(results[0]['columns'], ['index', 'value'])
+
+
+@unittest.skipUnless(MONGO_AVAILABLE, "mongo-test 未运行，跳过集成测试")
+class MongoDBConnectorIntegrationTest(TestCase):
+    def _make_connector(self):
+        from common.connector import MongoDBConnector
+        return MongoDBConnector('127.0.0.1', 27117, 'dbs_admin', 'Dbs@Admin2026', 'admin')
+
+    def test_get_databases_excludes_system_dbs(self):
+        c = self._make_connector()
+        dbs = c.get_databases()
+        self.assertNotIn('admin', dbs)
+        self.assertNotIn('config', dbs)
+        self.assertNotIn('local', dbs)
+
+    def test_execute_find_returns_resultset(self):
+        # Insert test doc, query it, clean up
+        import pymongo
+        client = pymongo.MongoClient(
+            host='127.0.0.1', port=27117,
+            username='dbs_admin', password='Dbs@Admin2026', authSource='admin',
+        )
+        client['testdb']['_test_col'].insert_one({'name': 'test', 'val': 1})
+        try:
+            c = self._make_connector()
+            results, elapsed = c.execute_sql('db._test_col.find({"name": "test"})', 'testdb')
+            self.assertEqual(results[0]['type'], 'resultset')
+            self.assertIn('name', results[0]['columns'])
+            self.assertGreater(elapsed, 0)
+        finally:
+            client['testdb']['_test_col'].drop()
+            client.close()
+
+    def test_execute_count_documents(self):
+        c = self._make_connector()
+        results, _ = c.execute_sql('db._test_count.count_documents({})', 'testdb')
+        self.assertEqual(results[0]['columns'], ['count'])
+
+    def test_execute_invalid_format_raises(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c.execute_sql('SELECT * FROM users', 'testdb')
+
+    def test_empty_db_raises(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c.execute_sql('db.col.find({})', '')

@@ -14,7 +14,7 @@
 |------|------|
 | 数据库查询 | 按数据库名或 IP+端口跨实例检索数据库信息 |
 | SQL 查询 | 在线 SQL 编辑器，支持多语句执行、对象浏览器、结果导出 |
-| 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB / PostgreSQL 实例（admin / root 可操作） |
+| 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB / PostgreSQL / Redis / MongoDB 实例（admin / root 可操作） |
 | 集群拓扑查询 | 查询指定节点的主从角色与复制状态 |
 | 用户管理 | 创建 / 编辑用户，支持三种角色（root / admin / query） |
 | 用户组管理 | 管理实例访问权限组，控制 query 用户可见的实例范围 |
@@ -27,6 +27,8 @@
 | MySQL 8.0 | 完整支持 |
 | TiDB | 兼容 MySQL 协议，完整支持 |
 | PostgreSQL 14+ | 支持多 Schema，数据库选择器显示 `dbname_schema` 格式 |
+| Redis 7+ | 只读命令白名单（GET/KEYS/HGETALL 等），固定 db0–db15 |
+| MongoDB 6+ | 支持 find/count_documents/aggregate，每实例独立凭据 |
 
 ### 角色权限
 
@@ -42,7 +44,7 @@
 - **元数据库**：外部 MySQL 8.0（由用户自行提供）
 - **前端**：Bootstrap 5.3、Bootstrap Icons、CodeMirror 5（单页应用，无需构建）
 - **认证**：Session 认证 + CSRF 保护
-- **数据库驱动**：pymysql（MySQL/TiDB）、psycopg2-binary（PostgreSQL）
+- **数据库驱动**：pymysql（MySQL/TiDB）、psycopg2-binary（PostgreSQL）、redis-py（Redis）、pymongo（MongoDB）
 
 ### 目录结构
 
@@ -193,6 +195,23 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO dbs_admin;
 -- 如有多个 schema，对每个 schema 重复 GRANT USAGE / SELECT
 ```
 
+Redis（可选，无密码时留空）：
+
+```bash
+# 如需密码认证（Redis 6+ ACL）：
+ACL SETUSER dbs_admin on >your-password ~* &* +@read
+```
+
+MongoDB：
+
+```javascript
+db.createUser({
+  user: "dbs_admin",
+  pwd: "your-password",
+  roles: [{ role: "read", db: "your_db" }]
+})
+```
+
 **5. 启动服务**
 
 ```bash
@@ -220,7 +239,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 |--------|-------------|
 | DB Search | Search databases by name or IP+port across all registered instances |
 | SQL Query | Online SQL editor with multi-statement execution, object browser, and CSV export |
-| Instance Management | Register / edit / delete MySQL / TiDB / PostgreSQL instances (admin / root only) |
+| Instance Management | Register / edit / delete MySQL / TiDB / PostgreSQL / Redis / MongoDB instances (admin / root only) |
 | Cluster Topology | Query master/slave role and replication status for any node |
 | User Management | Create / edit users with three roles: root / admin / query |
 | Group Management | Manage instance access groups to control which instances query users can see |
@@ -233,6 +252,8 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 | MySQL 8.0 | Fully supported |
 | TiDB | MySQL-protocol compatible, fully supported |
 | PostgreSQL 14+ | Multi-schema support; DB selector uses `dbname_schema` format |
+| Redis 7+ | Read-only command whitelist (GET/KEYS/HGETALL etc.), fixed db0–db15 |
+| MongoDB 6+ | Supports find/count_documents/aggregate; per-instance credentials |
 
 ### Roles & Permissions
 
@@ -248,7 +269,7 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 - **Metadata DB**: External MySQL 8.0 (user-provided)
 - **Frontend**: Bootstrap 5.3, Bootstrap Icons, CodeMirror 5 (SPA, no build step)
 - **Auth**: Session authentication + CSRF protection
-- **DB Drivers**: pymysql (MySQL/TiDB), psycopg2-binary (PostgreSQL)
+- **DB Drivers**: pymysql (MySQL/TiDB), psycopg2-binary (PostgreSQL), redis-py (Redis), pymongo (MongoDB)
 
 ### Project Structure
 
@@ -377,12 +398,41 @@ python3 manage.py create_dbsroot
 # Default credentials: dbsroot / Dbs@Root2026
 ```
 
-**4. Create the query account on each MySQL / TiDB instance**
+**4. Create the query account on each target instance**
+
+MySQL / TiDB:
 
 ```sql
 CREATE USER 'dbs_admin'@'%' IDENTIFIED BY 'your-password';
 GRANT SELECT, SHOW DATABASES, REPLICATION CLIENT, PROCESS ON *.* TO 'dbs_admin'@'%';
 FLUSH PRIVILEGES;
+```
+
+PostgreSQL:
+
+```sql
+CREATE USER dbs_admin WITH PASSWORD 'your-password';
+GRANT CONNECT ON DATABASE your_db TO dbs_admin;
+GRANT USAGE ON SCHEMA public TO dbs_admin;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO dbs_admin;
+-- Repeat GRANT USAGE / SELECT for each additional schema
+```
+
+Redis (optional, leave password blank if no auth):
+
+```bash
+# For password authentication (Redis 6+ ACL):
+ACL SETUSER dbs_admin on >your-password ~* &* +@read
+```
+
+MongoDB:
+
+```javascript
+db.createUser({
+  user: "dbs_admin",
+  pwd: "your-password",
+  roles: [{ role: "read", db: "your_db" }]
+})
 ```
 
 **5. Start the server**
