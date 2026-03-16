@@ -215,19 +215,8 @@ class PostgreSQLConnector(BaseConnector):
         # 每个库展开所有用户 schema，返回 dbname_schema 格式列表
         result = []
         for dbname in db_names:
-            db_conn = self._connect(dbname)
-            try:
-                with db_conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT schema_name FROM information_schema.schemata"
-                        " WHERE schema_name NOT IN ('pg_catalog','information_schema')"
-                        "   AND schema_name NOT LIKE 'pg_%'"
-                        " ORDER BY schema_name"
-                    )
-                    for (schema,) in cur.fetchall():
-                        result.append(f"{dbname}_{schema}")
-            finally:
-                db_conn.close()
+            for schema, _ in self._get_schemas(dbname):
+                result.append(f"{dbname}_{schema}")
         return result
 
     def get_tables(self, db: str) -> list:
@@ -308,17 +297,27 @@ class PostgreSQLConnector(BaseConnector):
         return self._search_all()
 
     def _get_schemas(self, dbname: str) -> list:
-        """返回指定库的所有用户 schema 名列表。"""
+        """返回指定库的所有用户 schema 及其表数量，格式 [(schema, table_count), ...]。"""
         db_conn = self._connect(dbname)
         try:
             with db_conn.cursor() as cur:
                 cur.execute(
-                    "SELECT schema_name FROM information_schema.schemata"
-                    " WHERE schema_name NOT IN ('pg_catalog','information_schema')"
-                    "   AND schema_name NOT LIKE 'pg_%'"
-                    " ORDER BY schema_name"
+                    "SELECT t.table_schema, COUNT(*) AS table_count"
+                    " FROM information_schema.tables t"
+                    " WHERE t.table_schema NOT IN ('pg_catalog','information_schema')"
+                    "   AND t.table_schema NOT LIKE 'pg_%'"
+                    " GROUP BY t.table_schema"
+                    " UNION"
+                    " SELECT s.schema_name, 0"
+                    " FROM information_schema.schemata s"
+                    " WHERE s.schema_name NOT IN ('pg_catalog','information_schema')"
+                    "   AND s.schema_name NOT LIKE 'pg_%'"
+                    "   AND s.schema_name NOT IN ("
+                    "       SELECT DISTINCT table_schema FROM information_schema.tables"
+                    "   )"
+                    " ORDER BY 1"
                 )
-                return [r[0] for r in cur.fetchall()]
+                return [(r[0], int(r[1])) for r in cur.fetchall()]
         finally:
             db_conn.close()
 
@@ -347,26 +346,20 @@ class PostgreSQLConnector(BaseConnector):
 
         # 如果搜索词包含下划线且 target_schema 有意义，只返回指定 schema
         # 否则返回该库下所有 schema
-        all_schemas = self._get_schemas(real_db)
-        if '_' in db_name and target_schema in all_schemas:
+        all_schemas = self._get_schemas(real_db)   # [(schema, count), ...]
+        schema_counts = dict(all_schemas)
+        all_schema_names = list(schema_counts.keys())
+        if '_' in db_name and target_schema in schema_counts:
             schemas = [target_schema]
         else:
-            schemas = all_schemas
-
+            schemas = all_schema_names
         result = []
         for schema in schemas:
-            db_conn = self._connect(real_db)
-            try:
-                with db_conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT COUNT(*) FROM information_schema.tables"
-                        " WHERE table_schema=%s",
-                        (schema,)
-                    )
-                    table_count = cur.fetchone()[0]
-            finally:
-                db_conn.close()
-            result.append({'db_name': f"{real_db}_{schema}", 'table_count': table_count, 'size_mb': size_mb})
+            result.append({
+                'db_name': f"{real_db}_{schema}",
+                'table_count': schema_counts.get(schema, 0),
+                'size_mb': size_mb,
+            })
         return result
 
     def _search_all(self) -> list:
@@ -386,8 +379,8 @@ class PostgreSQLConnector(BaseConnector):
 
         result = []
         for datname, size_mb in rows:
-            for schema in self._get_schemas(datname):
-                result.append({'db_name': f"{datname}_{schema}", 'table_count': -1, 'size_mb': float(size_mb or 0)})
+            for schema, table_count in self._get_schemas(datname):
+                result.append({'db_name': f"{datname}_{schema}", 'table_count': table_count, 'size_mb': float(size_mb or 0)})
         return result
 
 
