@@ -9,6 +9,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 
 from common.config import QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD, DBS_DB_CONFIG
+from common.connector import get_connector, MYSQL_SYSTEM_DBS
 from .models import Instance
 
 logger = logging.getLogger('dbs')
@@ -53,20 +54,42 @@ def _can_access_instance(user, ip, port):
     return False
 
 
+def _resolve_instance(request, ip, port, instance_id):
+    """
+    从请求参数解析目标实例，返回 (ip, port, db_type, inst_or_None)。
+    优先使用 instance_id；无则用 ip+port（仅 root）。
+    失败时抛 ValueError（参数错误）或 PermissionError（权限不足）。
+    """
+    if instance_id:
+        try:
+            inst = Instance.objects.get(pk=instance_id)
+        except (Instance.DoesNotExist, ValueError):
+            raise ValueError(f'实例 {instance_id} 不存在')
+        if not _can_access_instance(request.user, inst.ip, inst.port):
+            raise PermissionError('无权限访问该实例，请联系管理员')
+        return inst.ip, inst.port, inst.db_type, inst
+
+    if ip and port:
+        if not request.user.is_superuser:
+            raise PermissionError('ip/port 方式仅 root 角色可用，请使用 instance_id')
+        try:
+            inst = Instance.objects.filter(ip=ip, port=int(port)).first()
+        except (TypeError, ValueError):
+            inst = None
+        db_type = inst.db_type if inst else 'mysql'
+        return ip, int(port), db_type, inst
+
+    raise ValueError('instance_id 或 ip+port 不能同时为空')
+
+
 def _resolve_credentials(account, passwd):
     """未传账号时使用默认查询账号 dbs_admin"""
     if not account:
         return QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD
     return account, passwd
 
-FILTER_DB_NAMES = {
-    # MySQL / TiDB 系统库
-    'information_schema', 'performance_schema', 'mysql', 'sys', 'test',
-    'checksum', 'dba_backup', 'backup_dba', 'percona',
-    '#mysql50#lost found', '#mysql50#lost+found',
-    # TiDB 专属系统库
-    'metrics_schema', 'INFORMATION_SCHEMA', 'PERFORMANCE_SCHEMA', 'METRICS_SCHEMA',
-}
+# 保留名字供 DatabaseSearchView 用；MySQL 系统库 + PG 系统库合并
+FILTER_DB_NAMES = MYSQL_SYSTEM_DBS | {'postgres', 'template0', 'template1'}
 _FILTER_DB_TUPLE = tuple(FILTER_DB_NAMES)
 
 
@@ -254,15 +277,28 @@ def _is_admin_or_root(user):
     return profile and profile.role == 'admin'
 
 
-def _inst_to_dict(inst):
+def _inst_to_dict_full(inst):
+    """含 ip/port，仅 root 使用。"""
     return {
-        'id': inst.id,
-        'remark': inst.remark,
-        'ip': inst.ip,
-        'port': inst.port,
-        'env': inst.env,
-        'db_type': inst.db_type,
+        'id': inst.id, 'remark': inst.remark,
+        'ip': inst.ip, 'port': inst.port,
+        'env': inst.env, 'db_type': inst.db_type,
     }
+
+
+def _inst_to_dict_safe(inst):
+    """不含 ip/port，非 root 使用。"""
+    return {
+        'id': inst.id, 'remark': inst.remark,
+        'env': inst.env, 'db_type': inst.db_type,
+    }
+
+
+def _inst_to_dict(inst, user=None):
+    """按用户角色返回对应格式（兼容旧调用）。"""
+    if user and user.is_superuser:
+        return _inst_to_dict_full(inst)
+    return _inst_to_dict_safe(inst)
 
 
 class InstanceListView(APIView):
