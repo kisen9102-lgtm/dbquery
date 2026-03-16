@@ -114,6 +114,11 @@ class GetConnectorTest(TestCase):
         c = get_connector('redis', '127.0.0.1', 6379, '', 'pass')
         self.assertIsInstance(c, RedisConnector)
 
+    def test_mongodb_type_returns_mongo_connector(self):
+        from common.connector import get_connector, MongoDBConnector
+        c = get_connector('mongodb', '127.0.0.1', 27017, 'u', 'p', 'admin')
+        self.assertIsInstance(c, MongoDBConnector)
+
 
 class PostgreSQLConnectorUnitTest(TestCase):
     """PostgreSQLConnector 单元测试：mock _connect，无需运行容器。"""
@@ -277,6 +282,67 @@ class RedisConnectorUnitTest(TestCase):
         self.assertTrue(results[0]['limited'])
         self.assertEqual(results[0]['row_count'], c.MAX_ROWS)
         self.assertEqual(len(results[0]['rows']), c.MAX_ROWS)
+
+
+class MongoDBConnectorUnitTest(TestCase):
+    """MongoDBConnector unit tests — mock pymongo."""
+
+    def _make_connector(self):
+        from common.connector import MongoDBConnector
+        return MongoDBConnector('127.0.0.1', 27117, 'dbs_admin', 'Dbs@Admin2026', 'admin')
+
+    def test_parse_query_find(self):
+        c = self._make_connector()
+        col, op, args = c._parse_query('db.users.find({"age": 18})')
+        self.assertEqual(col, 'users')
+        self.assertEqual(op, 'find')
+        self.assertEqual(args, {"age": 18})
+
+    def test_parse_query_count_documents(self):
+        c = self._make_connector()
+        col, op, args = c._parse_query('db.orders.count_documents({"status": "paid"})')
+        self.assertEqual(col, 'orders')
+        self.assertEqual(op, 'count_documents')
+
+    def test_parse_query_aggregate(self):
+        c = self._make_connector()
+        col, op, args = c._parse_query('db.sales.aggregate([{"$group": {"_id": "$status"}}])')
+        self.assertEqual(col, 'sales')
+        self.assertEqual(op, 'aggregate')
+        self.assertIsInstance(args, list)
+
+    def test_parse_query_invalid_format(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c._parse_query('SELECT * FROM users')
+        with self.assertRaises(ValueError):
+            c._parse_query('db.users.drop()')
+
+    def test_parse_query_invalid_json(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c._parse_query('db.users.find({bad json})')
+
+    def test_execute_sql_empty_db_raises(self):
+        c = self._make_connector()
+        with self.assertRaises(ValueError):
+            c.execute_sql('db.users.find({})', db='')
+
+    @patch('common.connector.pymongo')
+    def test_get_databases_excludes_system_dbs(self, mock_pymongo):
+        mock_client = MagicMock()
+        mock_client.list_database_names.return_value = ['admin', 'config', 'local', 'myapp', 'testdb']
+        mock_pymongo.MongoClient.return_value = mock_client
+
+        c = self._make_connector()
+        with patch.object(c, '_get_client', return_value=mock_client):
+            result = c.get_databases()
+
+        self.assertNotIn('admin', result)
+        self.assertNotIn('config', result)
+        self.assertNotIn('local', result)
+        self.assertIn('myapp', result)
+        self.assertIn('testdb', result)
 
 
 import unittest

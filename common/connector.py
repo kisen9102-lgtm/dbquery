@@ -3,10 +3,12 @@
 连接器抽象层：按 db_type 路由到对应数据库连接实现。
 新增数据库类型时只需：1) 新建 XxxConnector 子类；2) 在 get_connector() 中注册。
 """
+import re
 import time
 from abc import ABC, abstractmethod
 import shlex
 import redis
+import pymongo
 
 import pymysql
 import pymysql.cursors
@@ -21,6 +23,9 @@ MYSQL_SYSTEM_DBS = frozenset({
 
 # PostgreSQL 系统库过滤集
 PG_SYSTEM_DBS = frozenset({'postgres', 'template0', 'template1'})
+
+# MongoDB 系统库过滤集
+MONGO_SYSTEM_DBS = frozenset({'admin', 'config', 'local'})
 
 
 class BaseConnector(ABC):
@@ -480,6 +485,168 @@ class RedisConnector(BaseConnector):
         return []
 
 
+_MONGO_PATTERN = re.compile(
+    r'^db\.(\w+)\.(find|count_documents|aggregate)\((\{.*\}|\[.*\])\s*\)$',
+    re.DOTALL,
+)
+
+
+class MongoDBConnector(BaseConnector):
+    """
+    Read-only MongoDB connector.
+    Supported queries:
+      db.<collection>.find(<json_filter>)
+      db.<collection>.count_documents(<json_filter>)
+      db.<collection>.aggregate(<json_pipeline_array>)
+    Two-gate defense: regex shape check → json.loads validation. Never uses eval().
+    """
+
+    def __init__(self, host, port, user, password, auth_source=''):
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.auth_source = auth_source or 'admin'
+
+    def _get_client(self):
+        return pymongo.MongoClient(
+            host=self.host, port=self.port,
+            username=self.user or None,
+            password=self.password or None,
+            authSource=self.auth_source,
+            serverSelectionTimeoutMS=5000,
+        )
+
+    def _parse_query(self, query: str):
+        """
+        Gate 1: regex verifies shape — db.<word>.<op>(<json>)
+        Gate 2: json.loads validates well-formed JSON.
+        Do NOT remove Gate 2 and rely on Gate 1 alone.
+        """
+        import json
+        m = _MONGO_PATTERN.match(query.strip())
+        if not m:
+            raise ValueError(
+                '查询格式不正确，支持: '
+                'db.<col>.find({}) / count_documents({}) / aggregate([])'
+            )
+        collection, op, args_str = m.group(1), m.group(2), m.group(3)
+        try:
+            args = json.loads(args_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f'查询参数解析失败: {e}')
+        return collection, op, args
+
+    def get_databases(self) -> list:
+        # Do NOT use `with self._get_client() as client:` — pymongo 4.6 context manager
+        # returns None from __enter__ in some versions. Always use explicit close().
+        client = self._get_client()
+        try:
+            return [d for d in client.list_database_names()
+                    if d not in MONGO_SYSTEM_DBS]
+        finally:
+            client.close()
+
+    def get_tables(self, db: str) -> list:
+        client = self._get_client()
+        try:
+            result = []
+            for name in client[db].list_collection_names():
+                try:
+                    stats = client[db].command('collStats', name)
+                    rows = stats.get('count', 0)
+                    size_mb = round(stats.get('size', 0) / 1024 / 1024, 2)
+                except Exception:
+                    rows, size_mb = 0, 0.0
+                result.append({
+                    'TABLE_NAME': name,
+                    'TABLE_TYPE': 'collection',
+                    'TABLE_ROWS': rows,
+                    'size_mb': size_mb,
+                })
+            return result
+        finally:
+            client.close()
+
+    def execute_sql(self, query: str, db: str = '') -> tuple:
+        if not db:
+            raise ValueError('请先选择数据库')
+        collection_name, op, args = self._parse_query(query)
+        t0 = time.time()
+        client = self._get_client()
+        try:
+            col = client[db][collection_name]
+            if op == 'find':
+                cursor = col.find(args).limit(self.MAX_ROWS + 1)
+                docs = list(cursor)
+            elif op == 'count_documents':
+                count = col.count_documents(args)
+                elapsed = round((time.time() - t0) * 1000, 1)
+                return [{
+                    'type': 'resultset',
+                    'columns': ['count'],
+                    'rows': [[count]],
+                    'row_count': 1,
+                    'limited': False,
+                    'sql': query,
+                }], elapsed
+            elif op == 'aggregate':
+                docs = list(col.aggregate(args))
+            else:
+                raise ValueError(f'不支持的操作: {op}')
+        finally:
+            client.close()
+
+        limited = len(docs) > self.MAX_ROWS
+        docs = docs[:self.MAX_ROWS]
+
+        # Derive columns from union of all document keys
+        columns = []
+        seen = set()
+        for doc in docs:
+            for k in doc.keys():
+                if k not in seen:
+                    columns.append(k)
+                    seen.add(k)
+        if not columns:
+            columns = ['(empty)']
+
+        rows = [[str(doc.get(c, '')) for c in columns] for doc in docs]
+        elapsed = round((time.time() - t0) * 1000, 1)
+        return [{
+            'type': 'resultset',
+            'columns': columns,
+            'rows': rows,
+            'row_count': len(rows),
+            'limited': limited,
+            'sql': query,
+        }], elapsed
+
+    def search_databases(self, db_name: str = '') -> list:
+        client = self._get_client()
+        try:
+            all_dbs = [d for d in client.list_database_names()
+                       if d not in MONGO_SYSTEM_DBS]
+            if db_name:
+                all_dbs = [d for d in all_dbs if db_name.lower() in d.lower()]
+            result = []
+            for name in all_dbs:
+                try:
+                    info = client[name].command('dbStats')
+                    size_mb = round(info.get('dataSize', 0) / 1024 / 1024, 2)
+                    table_count = info.get('collections', 0)
+                except Exception:
+                    size_mb, table_count = 0.0, 0
+                result.append({
+                    'db_name': name,
+                    'table_count': table_count,
+                    'size_mb': size_mb,
+                })
+            return result
+        finally:
+            client.close()
+
+
 def get_connector(db_type: str, host: str, port: int,
                   user: str, password: str,
                   auth_source: str = '') -> BaseConnector:
@@ -490,4 +657,6 @@ def get_connector(db_type: str, host: str, port: int,
         return PostgreSQLConnector(host, port, user, password)
     if db_type == 'redis':
         return RedisConnector(host, port, user, password)
+    if db_type == 'mongodb':
+        return MongoDBConnector(host, port, user, password, auth_source)
     raise ValueError(f'不支持的数据库类型: {db_type}')
