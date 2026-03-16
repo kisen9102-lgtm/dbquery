@@ -18,8 +18,10 @@
 2. 支持 PostgreSQL 实例的核心三项功能：列数据库、列表（public schema）、执行 SQL
 3. 支持 `DatabaseSearchView` 跨实例搜索时正确处理 PostgreSQL 实例
 4. 引入连接器抽象层，为未来扩展 Oracle/Redis/MongoDB 奠基
-5. 用 docker-compose 添加本地 PostgreSQL 测试服务，方便开发调试
-6. 不影响现有 MySQL / TiDB 功能
+5. **新增 `instance_id` 参数作为实例定位方式**，隐藏 ip/port 敏感信息
+6. **ip/port 信息仅 root 角色可见/可用**，其他角色只能通过 `instance_id` 操作
+7. 用 docker-compose 添加本地 PostgreSQL 测试服务，方便开发调试
+8. 不影响现有 MySQL / TiDB 功能
 
 ---
 
@@ -50,12 +52,28 @@ def get_connector(db_type, host, port, user, password) -> BaseConnector:
 ]
 ```
 
-### `db_type` 获取策略
+### 实例定位策略与 ip/port 权限控制
 
-所有涉及目标实例的 View（`DatabaseListView`、`TableListView`、`ExecuteSqlView`、`DatabaseSearchView`）均通过 **`ip + port` 从 `Instance` 表查询 `db_type`**，不依赖前端传参。
+`DatabaseListView`、`TableListView`、`ExecuteSqlView` 支持两种定位方式，按优先级处理：
 
-- 若 `Instance` 记录不存在，默认当作 `mysql` 处理（保持现有向后兼容性）
-- 优点：API 参数不变，不破坏现有调用方；`db_type` 由管理员在实例注册时确定，运行时不可篡改
+**方式一（推荐）：`instance_id`**
+- 前端传 `instance_id`，后端从 `Instance` 表查出 ip/port/db_type，用户**永远看不到** ip/port
+- 适用所有角色（前提：`_can_access_instance` 通过）
+
+**方式二（仅 root）：`ip + port`**
+- 前端传 `ip` + `port`，后端直接使用
+- **非 root 角色调用时返回 403**，拒绝理由："ip/port 方式仅 root 角色可用，请使用 instance_id"
+- 向后兼容现有 root 用户的调用方式
+
+**`db_type` 获取**：两种方式均从 `Instance` 表读取 `db_type`。若 instance_id 方式查不到记录返回 404；若 ip+port 方式查不到则默认 `mysql`（兼容旧逻辑）。
+
+**`InstanceListView.get` 响应中的 ip/port 可见性**：
+- root 角色：返回完整字段（含 ip、port）
+- admin/query 角色：响应中**隐藏 ip 和 port**，仅返回 `id`、`remark`、`env`、`db_type`
+
+**`DatabaseSearchView` 结果中的 ip/port 可见性**：
+- root 角色：返回完整 ip、port 字段
+- 非 root 角色：ip 返回 `***`，port 返回 `0`（结果仍可见，但连接信息脱敏）
 
 ### 改造：`databases/views.py`
 
@@ -63,12 +81,15 @@ def get_connector(db_type, host, port, user, password) -> BaseConnector:
 
 | View | 改造要点 |
 |------|---------|
-| `DatabaseListView` | 查 Instance 取 db_type，调用 `connector.get_databases()` |
+| `DatabaseListView` | 优先取 `instance_id` 定位实例；无则取 `ip+port`（仅 root）；从 Instance 取 db_type，调用 `connector.get_databases()` |
 | `TableListView` | 同上，调用 `connector.get_tables(db)` |
 | `ExecuteSqlView` | 同上，调用 `connector.execute_sql(sql, db)` |
-| `DatabaseSearchView` | 遍历实例时按 `inst.db_type` 创建对应 connector，调用 `get_databases()` 或搜索逻辑 |
+| `InstanceListView.get` | 非 root 角色响应中移除 `ip`、`port` 字段 |
 | `InstanceListView.post` | 将硬编码校验 `if db_type not in ('mysql', 'tidb')` 改为 `('mysql', 'tidb', 'postgresql')` |
 | `InstanceDetailView.put` | 同上，同一文件中有两处需同步修改 |
+| `DatabaseSearchView` | 遍历实例时按 `inst.db_type` 创建对应 connector；非 root 响应中 ip 替换为 `***`，port 替换为 `0` |
+
+新增辅助函数 `_resolve_instance(request, ip, port, instance_id)`：封装上述定位逻辑，返回 `(ip, port, db_type, instance)` 或抛异常，供三个查询 View 复用。
 
 `_connect()` 辅助函数继续保留，由 `MySQLConnector` 内部使用，不对外暴露。
 
@@ -174,12 +195,15 @@ services:
 ## 测试计划
 
 1. `docker-compose up postgres-test` 启动测试 PG 实例
-2. 在实例注册表中添加 `127.0.0.1:15432 / postgresql / dbs_admin`
-3. 验证：`DatabaseListView` 返回 `['testdb']`
-4. 验证：`TableListView` 返回 testdb 下 public schema 的表（初始为空或含测试表）
-5. 验证：`ExecuteSqlView` 执行 `SELECT version()`、多语句、DML 被 query 角色拒绝
-6. 验证：`DatabaseSearchView` 按名搜索能正确返回 PG 实例结果
-7. 验证：MySQL/TiDB 实例功能不受影响（回归测试）
+2. root 角色在实例注册表中添加 `127.0.0.1:15432 / postgresql`，记录返回的 `instance_id`
+3. 验证：`DatabaseListView?instance_id=<id>` 返回 `['testdb']`
+4. 验证：`TableListView?instance_id=<id>&db=testdb` 返回表列表
+5. 验证：`ExecuteSqlView` 使用 `instance_id` 执行 `SELECT version()`、多语句、DML 被 query 角色拒绝
+6. 验证：非 root 角色使用 `ip+port` 直接调用时返回 403
+7. 验证：`InstanceListView` 非 root 响应中无 ip/port 字段；root 响应中有
+8. 验证：`DatabaseSearchView` 结果中非 root 角色 ip 为 `***`、port 为 `0`
+9. 验证：`DatabaseSearchView` 按名搜索能正确返回 PG 实例结果
+10. 验证：MySQL/TiDB 实例功能不受影响（回归测试）
 
 ---
 
