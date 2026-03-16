@@ -204,3 +204,44 @@ class InstanceListViewTest(TestCase):
             'ip': '10.0.0.3', 'port': 5434, 'db_type': 'oracle',
         }, format='json')
         self.assertEqual(resp.status_code, 400)
+
+
+class DatabaseSearchViewTest(TestCase):
+
+    def setUp(self):
+        self.root = User.objects.create_superuser('root6', password='root6')
+        self.quser = User.objects.create_user('quser6', password='quser6')
+        self.mysql_inst = Instance.objects.create(
+            remark='mysql-1', ip='10.0.0.1', port=3306, env='test', db_type='mysql'
+        )
+        self.pg_inst = Instance.objects.create(
+            remark='pg-1', ip='10.0.0.2', port=5432, env='test', db_type='postgresql'
+        )
+        self.client = APIClient()
+
+    def test_root_response_contains_ip_port(self):
+        self.client.force_authenticate(self.root)
+        with patch('databases.views.get_connector') as mock_gc:
+            mock_gc.return_value.search_databases.return_value = [
+                {'db_name': 'mydb', 'table_count': 3, 'size_mb': 1.0}
+            ]
+            resp = self.client.get('/databases/search/', {'db_name': 'mydb'})
+        self.assertEqual(resp.status_code, 200)
+        results = resp.data['results']
+        if results:
+            self.assertIn('ip', results[0])
+            self.assertIn('port', results[0])
+
+    def test_non_root_response_excludes_ip_port(self):
+        self.client.force_authenticate(self.quser)
+        with patch('databases.views.get_connector') as mock_gc:
+            mock_gc.return_value.search_databases.return_value = [
+                {'db_name': 'mydb', 'table_count': 3, 'size_mb': 1.0}
+            ]
+            resp = self.client.get('/databases/search/', {'db_name': 'mydb'})
+        self.assertEqual(resp.status_code, 200)
+        for item in resp.data.get('results', []):
+            self.assertNotIn('ip', item)
+            self.assertNotIn('port', item)
+            self.assertIn('id', item)
+            self.assertIn('remark', item)

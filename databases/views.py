@@ -384,23 +384,26 @@ class DatabaseSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        db_name = request.GET.get('db_name', '').strip()
+        db_name   = request.GET.get('db_name', '').strip()
         ip_filter = request.GET.get('ip', '').strip()
-        port_str = request.GET.get('port', '').strip()
+        port_str  = request.GET.get('port', '').strip()
 
         if not db_name and not (ip_filter and port_str) and _is_query_role(request.user):
             return Response(
                 {'error': True, 'message': '请输入数据库名称，或同时输入 IP 和端口', 'results': []},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         if db_name and _is_query_role(request.user) and db_name.lower() in FILTER_DB_NAMES:
             return Response(
                 {'error': True, 'message': f'禁止查询系统库：{db_name}', 'results': []},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if ip_filter and port_str and _is_query_role(request.user):
+            return Response(
+                {'error': True, 'message': '无权限通过 IP+端口 方式查询，请使用数据库名称查询', 'results': []},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-        # 查询可访问实例列表
         try:
             qs = Instance.objects.all().order_by('id')
             if ip_filter and port_str:
@@ -411,81 +414,31 @@ class DatabaseSearchView(APIView):
             return Response({'error': True, 'message': str(exc), 'results': []},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 按 IP+端口 查询仅限 root/admin
-        if ip_filter and port_str and _is_query_role(request.user):
-            return Response(
-                {'error': True, 'message': '无权限通过 IP+端口 方式查询，请使用数据库名称查询', 'results': []},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
+        is_root = request.user.is_superuser
         results = []
+
         for inst in instances:
             try:
-                conn = _connect(inst.ip, inst.port, QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD)
-                with conn.cursor(pymysql.cursors.DictCursor) as cur:
-                    if db_name:
-                        # 检查该实例是否存在该数据库
-                        cur.execute(
-                            "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = %s",
-                            (db_name,)
-                        )
-                        if not cur.fetchone():
-                            conn.close()
-                            continue
-                        cur.execute(
-                            "SELECT COUNT(*) AS table_count, "
-                            "ROUND(SUM(DATA_LENGTH + INDEX_LENGTH)/1024/1024, 2) AS size_mb "
-                            "FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s",
-                            (db_name,)
-                        )
-                        stats = cur.fetchone() or {}
-                        results.append({
-                            'id': inst.id,
-                            'ip': inst.ip,
-                            'port': inst.port,
-                            'remark': inst.remark,
-                            'env': inst.env,
-                            'db_type': inst.db_type,
-                            'db_name': db_name,
-                            'table_count': int(stats.get('table_count') or 0),
-                            'size_mb': float(stats.get('size_mb') or 0),
-                        })
-                    else:
-                        # 列出该实例所有业务数据库
-                        cur.execute(
-                            "SELECT TABLE_SCHEMA AS db_name, COUNT(*) AS table_count, "
-                            "ROUND(SUM(DATA_LENGTH + INDEX_LENGTH)/1024/1024, 2) AS size_mb "
-                            "FROM information_schema.TABLES "
-                            "WHERE TABLE_SCHEMA NOT IN %s "
-                            "GROUP BY TABLE_SCHEMA ORDER BY TABLE_SCHEMA",
-                            (_FILTER_DB_TUPLE,)
-                        )
-                        for db in cur.fetchall():
-                            results.append({
-                                'id': inst.id,
-                                'ip': inst.ip,
-                                'port': inst.port,
-                                'remark': inst.remark,
-                                'env': inst.env,
-                                'db_type': inst.db_type,
-                                'db_name': db['db_name'],
-                                'table_count': int(db.get('table_count') or 0),
-                                'size_mb': float(db.get('size_mb') or 0),
-                            })
-                conn.close()
+                connector = get_connector(
+                    inst.db_type, inst.ip, inst.port,
+                    QUERY_DEFAULT_ACCOUNT, QUERY_DEFAULT_PASSWORD,
+                )
+                db_stats = connector.search_databases(db_name)
             except Exception as exc:
                 logger.warning('搜索实例 %s:%s 失败: %s', inst.ip, inst.port, exc)
-                results.append({
-                    'id': inst.id,
-                    'ip': inst.ip,
-                    'port': inst.port,
-                    'remark': inst.remark,
-                    'env': inst.env,
-                    'db_type': inst.db_type,
-                    'db_name': '-',
-                    'table_count': '-',
-                    'size_mb': '-',
-                    'error': str(exc),
+                base = _inst_to_dict_full(inst) if is_root else _inst_to_dict_safe(inst)
+                base.update({'db_name': '-', 'table_count': '-', 'size_mb': '-',
+                             'error': str(exc)})
+                results.append(base)
+                continue
+
+            for db in db_stats:
+                base = _inst_to_dict_full(inst) if is_root else _inst_to_dict_safe(inst)
+                base.update({
+                    'db_name':     db['db_name'],
+                    'table_count': db['table_count'],
+                    'size_mb':     db['size_mb'],
                 })
+                results.append(base)
 
         return Response({'error': False, 'results': results})
