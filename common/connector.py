@@ -208,10 +208,27 @@ class PostgreSQLConnector(BaseConnector):
                     " ORDER BY datname",
                     (tuple(PG_SYSTEM_DBS),)
                 )
-                # 格式：dbname_schema，当前只支持 public schema
-                return [f"{r[0]}_public" for r in cur.fetchall()]
+                db_names = [r[0] for r in cur.fetchall()]
         finally:
             conn.close()
+
+        # 每个库展开所有用户 schema，返回 dbname_schema 格式列表
+        result = []
+        for dbname in db_names:
+            db_conn = self._connect(dbname)
+            try:
+                with db_conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT schema_name FROM information_schema.schemata"
+                        " WHERE schema_name NOT IN ('pg_catalog','information_schema')"
+                        "   AND schema_name NOT LIKE 'pg_%'"
+                        " ORDER BY schema_name"
+                    )
+                    for (schema,) in cur.fetchall():
+                        result.append(f"{dbname}_{schema}")
+            finally:
+                db_conn.close()
+        return result
 
     def get_tables(self, db: str) -> list:
         import psycopg2.extras
