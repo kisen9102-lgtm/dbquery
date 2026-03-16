@@ -161,3 +161,46 @@ class ExecuteSqlViewTest(TestCase):
                 'sql': 'DELETE FROM users',
             }, format='json')
         self.assertEqual(resp.status_code, 403)
+
+
+class InstanceListViewTest(TestCase):
+
+    def setUp(self):
+        self.root = User.objects.create_superuser('root5', password='root5')
+        self.quser = User.objects.create_user('quser5', password='quser5')
+        self.inst = Instance.objects.create(
+            remark='pg', ip='10.0.0.1', port=5432, env='test', db_type='postgresql'
+        )
+        self.client = APIClient()
+
+    def test_root_sees_ip_port(self):
+        self.client.force_authenticate(self.root)
+        resp = self.client.get('/databases/instances/')
+        self.assertEqual(resp.status_code, 200)
+        item = resp.data[0]
+        self.assertIn('ip', item)
+        self.assertIn('port', item)
+
+    def test_non_root_cannot_see_ip_port(self):
+        self.client.force_authenticate(self.quser)
+        resp = self.client.get('/databases/instances/')
+        self.assertEqual(resp.status_code, 200)
+        for item in resp.data:
+            self.assertNotIn('ip', item)
+            self.assertNotIn('port', item)
+
+    def test_post_postgresql_db_type_allowed(self):
+        self.client.force_authenticate(self.root)
+        resp = self.client.post('/databases/instances/', {
+            'remark': 'new-pg', 'ip': '10.0.0.2', 'port': 5433,
+            'env': 'test', 'db_type': 'postgresql',
+        }, format='json')
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data['db_type'], 'postgresql')
+
+    def test_post_invalid_db_type_rejected(self):
+        self.client.force_authenticate(self.root)
+        resp = self.client.post('/databases/instances/', {
+            'ip': '10.0.0.3', 'port': 5434, 'db_type': 'oracle',
+        }, format='json')
+        self.assertEqual(resp.status_code, 400)

@@ -286,7 +286,8 @@ class InstanceListView(APIView):
                     allowed.add((str(item.get('ip')), int(item.get('port', 0))))
             qs = [inst for inst in qs if (str(inst.ip), inst.port) in allowed]
 
-        return Response([_inst_to_dict(inst) for inst in qs])
+        to_dict = _inst_to_dict_full if request.user.is_superuser else _inst_to_dict_safe
+        return Response([to_dict(inst) for inst in qs])
 
     def post(self, request):
         if not _is_admin_or_root(request.user):
@@ -303,7 +304,7 @@ class InstanceListView(APIView):
             port = int(port)
         except (TypeError, ValueError):
             return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
-        if db_type not in ('mysql', 'tidb'):
+        if db_type not in ('mysql', 'tidb', 'postgresql'):
             return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
 
         if Instance.objects.filter(ip=ip, port=port).exists():
@@ -314,7 +315,7 @@ class InstanceListView(APIView):
                 remark=remark or ip, ip=ip, port=port,
                 env=env, db_type=db_type, created_by=request.user.username,
             )
-            return Response(_inst_to_dict(inst), status=status.HTTP_201_CREATED)
+            return Response(_inst_to_dict_full(inst), status=status.HTTP_201_CREATED)
         except Exception as exc:
             logger.error('新增实例失败: %s', exc)
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -342,7 +343,7 @@ class InstanceDetailView(APIView):
             port = int(port)
         except (TypeError, ValueError):
             return Response({'error': 'port 必须为整数'}, status=status.HTTP_400_BAD_REQUEST)
-        if db_type not in ('mysql', 'tidb'):
+        if db_type not in ('mysql', 'tidb', 'postgresql'):
             return Response({'error': 'db_type 不合法'}, status=status.HTTP_400_BAD_REQUEST)
 
         if (ip != inst.ip or port != inst.port) and \
@@ -357,7 +358,7 @@ class InstanceDetailView(APIView):
             inst.env = env
             inst.db_type = db_type
             inst.save()
-            return Response(_inst_to_dict(inst))
+            return Response(_inst_to_dict_full(inst))
         except Exception as exc:
             logger.error('更新实例失败: %s', exc)
             return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
