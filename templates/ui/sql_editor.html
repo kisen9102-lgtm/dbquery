@@ -175,7 +175,7 @@
 
 <!-- ── 顶部工具栏 ── -->
 <div id="toolbar">
-  <span class="title"><i class="bi bi-database-fill me-1" style="color:#60a5fa"></i><span data-i18n="title">SQL 编辑器</span></span>
+  <span class="title"><i class="bi bi-database-fill me-1" style="color:#60a5fa"></i><span id="editor-title">SQL 编辑器</span></span>
   <div class="sep"></div>
   <select id="db-selector" onchange="onDbChange()"><option value="" data-i18n="select_db">选择数据库...</option></select>
   <div class="sep"></div>
@@ -384,7 +384,7 @@ function applyEditorMode() {
 
   // 根据数据库类型更新左上角标题
   const dbTypeLabel = {mysql:'MySQL', tidb:'TiDB', postgresql:'PostgreSQL', redis:'Redis', mongodb:'MongoDB'};
-  const titleEl = document.querySelector('.title [data-i18n="title"]');
+  const titleEl = document.getElementById('editor-title');
   if (titleEl) titleEl.textContent = dbTypeLabel[CONN.dbType] || 'SQL 编辑器';
 }
 applyEditorMode();
