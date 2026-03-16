@@ -67,13 +67,19 @@ def get_connector(db_type, host, port, user, password) -> BaseConnector:
 
 **`db_type` 获取**：两种方式均从 `Instance` 表读取 `db_type`。若 instance_id 方式查不到记录返回 404；若 ip+port 方式查不到则默认 `mysql`（兼容旧逻辑）。
 
-**`InstanceListView.get` 响应中的 ip/port 可见性**：
-- root 角色：返回完整字段（含 ip、port）
-- admin/query 角色：响应中**隐藏 ip 和 port**，仅返回 `id`、`remark`、`env`、`db_type`
+**全站 ip/port 可见性原则（适用所有 View 和页面）**：
+- **root 角色**：所有响应返回完整字段（含 ip、port）
+- **非 root 角色（admin/query）**：所有响应中**完全不包含 ip 和 port 字段**，前端使用 `id`（实例ID）+ `remark` 来标识实例
 
-**`DatabaseSearchView` 结果中的 ip/port 可见性**：
-- root 角色：返回完整 ip、port 字段
-- 非 root 角色：ip 返回 `***`，port 返回 `0`（结果仍可见，但连接信息脱敏）
+涉及响应需调整的 View：
+| View | 非 root 响应变化 |
+|------|----------------|
+| `InstanceListView.get` | 只返回 `id`、`remark`、`env`、`db_type` |
+| `DatabaseSearchView` | 结果项中移除 `ip`、`port` 字段，保留 `id`、`remark`、`env`、`db_type`、`db_name`、`table_count`、`size_mb` |
+
+`_inst_to_dict(inst)` 辅助函数拆分为：
+- `_inst_to_dict_full(inst)`：含 ip/port，供 root 使用
+- `_inst_to_dict_safe(inst)`：不含 ip/port，供非 root 使用
 
 ### 改造：`databases/views.py`
 
@@ -84,10 +90,10 @@ def get_connector(db_type, host, port, user, password) -> BaseConnector:
 | `DatabaseListView` | 优先取 `instance_id` 定位实例；无则取 `ip+port`（仅 root）；从 Instance 取 db_type，调用 `connector.get_databases()` |
 | `TableListView` | 同上，调用 `connector.get_tables(db)` |
 | `ExecuteSqlView` | 同上，调用 `connector.execute_sql(sql, db)` |
-| `InstanceListView.get` | 非 root 角色响应中移除 `ip`、`port` 字段 |
+| `InstanceListView.get` | 按角色调用 `_inst_to_dict_full` 或 `_inst_to_dict_safe` |
 | `InstanceListView.post` | 将硬编码校验 `if db_type not in ('mysql', 'tidb')` 改为 `('mysql', 'tidb', 'postgresql')` |
 | `InstanceDetailView.put` | 同上，同一文件中有两处需同步修改 |
-| `DatabaseSearchView` | 遍历实例时按 `inst.db_type` 创建对应 connector；非 root 响应中 ip 替换为 `***`，port 替换为 `0` |
+| `DatabaseSearchView` | 遍历实例时按 `inst.db_type` 创建对应 connector；按角色决定是否含 ip/port（调用对应 dict 函数） |
 
 新增辅助函数 `_resolve_instance(request, ip, port, instance_id)`：封装上述定位逻辑，返回 `(ip, port, db_type, instance)` 或抛异常，供三个查询 View 复用。
 
@@ -200,8 +206,8 @@ services:
 4. 验证：`TableListView?instance_id=<id>&db=testdb` 返回表列表
 5. 验证：`ExecuteSqlView` 使用 `instance_id` 执行 `SELECT version()`、多语句、DML 被 query 角色拒绝
 6. 验证：非 root 角色使用 `ip+port` 直接调用时返回 403
-7. 验证：`InstanceListView` 非 root 响应中无 ip/port 字段；root 响应中有
-8. 验证：`DatabaseSearchView` 结果中非 root 角色 ip 为 `***`、port 为 `0`
+7. 验证：`InstanceListView` 非 root 响应中**无 ip/port 字段**；root 响应中有完整字段
+8. 验证：`DatabaseSearchView` 结果中非 root 角色响应中**无 ip/port 字段**
 9. 验证：`DatabaseSearchView` 按名搜索能正确返回 PG 实例结果
 10. 验证：MySQL/TiDB 实例功能不受影响（回归测试）
 
