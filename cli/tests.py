@@ -146,5 +146,57 @@ class TestDirectClientReadonly(unittest.TestCase):
         self.assertEqual(tables[0]['TABLE_NAME'], 'key1')
 
 
+from cli.dbcli import parse_args, format_table
+
+
+class TestParseArgs(unittest.TestCase):
+
+    def test_instance_list(self):
+        args = parse_args(['instance', 'list'])
+        self.assertEqual(args.command, 'instance')
+        self.assertEqual(args.instance_cmd, 'list')
+
+    def test_instance_list_with_filters(self):
+        args = parse_args(['instance', 'list', '--env', 'prod', '--type', 'mysql'])
+        self.assertEqual(args.env, 'prod')
+        self.assertEqual(args.type, 'mysql')
+
+    def test_instance_get(self):
+        args = parse_args(['instance', 'get', '5'])
+        self.assertEqual(args.instance_cmd, 'get')
+        self.assertEqual(args.id, '5')
+
+    def test_instance_delete(self):
+        args = parse_args(['instance', 'delete', '3'])
+        self.assertEqual(args.instance_cmd, 'delete')
+        self.assertEqual(args.id, '3')
+
+    def test_query_args(self):
+        args = parse_args(['query', '-i', '1', '-d', 'mydb'])
+        self.assertEqual(args.command, 'query')
+        self.assertEqual(args.instance_id, '1')
+        self.assertEqual(args.database, 'mydb')
+
+    def test_query_direct_mode_args(self):
+        args = parse_args(['query', '-d', 'mydb',
+                           '--host', '10.0.0.1', '--port', '3306', '--db-type', 'mysql'])
+        self.assertEqual(args.host, '10.0.0.1')
+        self.assertEqual(args.port, '3306')
+        self.assertEqual(args.db_type, 'mysql')
+
+
+class TestFormatTable(unittest.TestCase):
+
+    def test_format_empty(self):
+        output = format_table([], [])
+        self.assertIn('(empty)', output)
+
+    def test_format_single_row(self):
+        output = format_table(['id', 'name'], [[1, 'foo']])
+        self.assertIn('id', output)
+        self.assertIn('name', output)
+        self.assertIn('foo', output)
+
+
 if __name__ == '__main__':
     unittest.main()
