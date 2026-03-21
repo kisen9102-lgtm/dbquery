@@ -18,9 +18,8 @@ def format_table(columns, rows):
         return '(empty)'
     col_widths = [len(str(c)) for c in columns]
     for row in rows:
-        for i, val in enumerate(row):
-            if i < len(col_widths):
-                col_widths[i] = max(col_widths[i], len(str(val)))
+        for i, (val, w) in enumerate(zip(row, col_widths)):
+            col_widths[i] = max(w, len(str(val)))
     sep = '+' + '+'.join('-' * (w + 2) for w in col_widths) + '+'
     header = '|' + '|'.join(f' {str(c):<{w}} ' for c, w in zip(columns, col_widths)) + '|'
     lines = [sep, header, sep]
