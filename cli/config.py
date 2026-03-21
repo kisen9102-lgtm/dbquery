@@ -8,8 +8,11 @@ CONFIG_PATH = os.path.expanduser('~/.dbcli.json')
 def load_config(path=CONFIG_PATH):
     if not os.path.exists(path):
         return {}
-    with open(path) as f:
-        return json.load(f)
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        return {}
 
 
 def save_config(config, path=CONFIG_PATH):
