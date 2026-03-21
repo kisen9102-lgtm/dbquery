@@ -100,5 +100,51 @@ class TestApiClientLogin(unittest.TestCase):
             client.execute_sql(1, 'mydb', 'SELECT 1')
 
 
+from cli.direct_client import DirectClient
+
+
+class TestDirectClientReadonly(unittest.TestCase):
+
+    @patch('cli.direct_client.get_connector')
+    def test_readonly_select_allowed(self, mock_get_connector):
+        mock_conn = MagicMock()
+        mock_conn.execute_sql.return_value = ([], 0)
+        mock_get_connector.return_value = mock_conn
+        client = DirectClient('127.0.0.1', 3306, 'mysql', 'user', 'pass')
+        client.execute_sql('SELECT 1', 'mydb')  # should not raise
+        mock_conn.execute_sql.assert_called_once_with('SELECT 1', 'mydb')
+
+    @patch('cli.direct_client.get_connector')
+    def test_readonly_insert_blocked(self, mock_get_connector):
+        mock_get_connector.return_value = MagicMock()
+        client = DirectClient('127.0.0.1', 3306, 'mysql', 'user', 'pass')
+        with self.assertRaises(PermissionError):
+            client.execute_sql('INSERT INTO t VALUES (1)', 'mydb')
+
+    @patch('cli.direct_client.get_connector')
+    def test_get_databases_delegates(self, mock_get_connector):
+        mock_conn = MagicMock()
+        mock_conn.get_databases.return_value = ['db1', 'db2']
+        mock_get_connector.return_value = mock_conn
+        client = DirectClient('127.0.0.1', 3306, 'mysql', 'user', 'pass')
+        result = client.get_databases()
+        self.assertEqual(result, ['db1', 'db2'])
+
+    @patch('cli.direct_client.get_connector')
+    def test_redis_show_tables_sends_keys_star(self, mock_get_connector):
+        mock_conn = MagicMock()
+        mock_conn.execute_sql.return_value = ([{
+            'type': 'resultset', 'columns': ['index', 'value'],
+            'rows': [[0, 'key1'], [1, 'key2']], 'row_count': 2,
+            'limited': False, 'sql': 'KEYS *',
+        }], 1.0)
+        mock_get_connector.return_value = mock_conn
+        client = DirectClient('127.0.0.1', 6379, 'redis', '', '')
+        tables = client.get_tables('db0')
+        mock_conn.execute_sql.assert_called_once_with('KEYS *', 'db0')
+        self.assertEqual(len(tables), 2)
+        self.assertEqual(tables[0]['TABLE_NAME'], 'key1')
+
+
 if __name__ == '__main__':
     unittest.main()
