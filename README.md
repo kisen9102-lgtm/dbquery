@@ -239,6 +239,51 @@ python3 manage.py runserver 0.0.0.0:8000
 
 访问 `http://localhost:8000`
 
+### CLI 工具（dbcli）
+
+`cli/` 目录提供了一个命令行工具，可通过 API 管理实例，无需打开浏览器。
+
+**使用方式**
+
+在项目根目录下执行：
+
+```bash
+python3 -m cli.dbcli [全局选项] <命令> [子命令] [参数]
+```
+
+首次使用时会提示输入用户名和密码，登录态保存在 `~/.dbcli.json`，后续无需重复登录。
+
+**全局选项**
+
+| 选项 | 说明 | 默认值 |
+|------|------|--------|
+| `--url` | dbquery 服务地址 | `http://127.0.0.1:8000` |
+| `--user` | 登录用户名 | 交互输入 |
+| `--password` | 登录密码 | 交互输入 |
+
+**instance 命令**
+
+```bash
+# 列出所有实例
+python3 -m cli.dbcli instance list
+
+# 按环境或类型过滤
+python3 -m cli.dbcli instance list --env prod
+python3 -m cli.dbcli instance list --type mysql
+
+# 查看实例详情
+python3 -m cli.dbcli instance get <id>
+
+# 新增实例（交互式，或通过参数指定）
+python3 -m cli.dbcli instance add
+python3 -m cli.dbcli instance add --ip 10.0.0.1 --port 3306 --db-type mysql --env prod
+
+# 删除实例
+python3 -m cli.dbcli instance delete <id>
+```
+
+---
+
 ### 注意事项
 
 - `.env` 含敏感信息，已加入 `.gitignore`，**请勿提交**
@@ -480,6 +525,51 @@ python3 manage.py runserver 0.0.0.0:8000
 ```
 
 Open `http://localhost:8000`
+
+### CLI Tool (dbcli)
+
+The `cli/` directory provides a command-line tool for managing instances via the API without opening a browser.
+
+**Usage**
+
+Run from the project root:
+
+```bash
+python3 -m cli.dbcli [global options] <command> [subcommand] [args]
+```
+
+On first use you will be prompted for credentials. The session is saved to `~/.dbcli.json` so subsequent calls don't require re-login.
+
+**Global options**
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--url` | dbquery service URL | `http://127.0.0.1:8000` |
+| `--user` | Login username | prompted |
+| `--password` | Login password | prompted |
+
+**instance commands**
+
+```bash
+# List all instances
+python3 -m cli.dbcli instance list
+
+# Filter by environment or type
+python3 -m cli.dbcli instance list --env prod
+python3 -m cli.dbcli instance list --type mysql
+
+# Show instance details
+python3 -m cli.dbcli instance get <id>
+
+# Add an instance (interactive, or pass flags directly)
+python3 -m cli.dbcli instance add
+python3 -m cli.dbcli instance add --ip 10.0.0.1 --port 3306 --db-type mysql --env prod
+
+# Delete an instance
+python3 -m cli.dbcli instance delete <id>
+```
+
+---
 
 ### Notes
 
