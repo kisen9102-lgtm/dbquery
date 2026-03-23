@@ -35,3 +35,4 @@ API_TEST.md
 # Docker 运行时
 .env
 .worktrees/
+nginx/certs/
