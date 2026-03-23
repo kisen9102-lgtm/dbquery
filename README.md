@@ -148,6 +148,25 @@ docker-compose down
 docker-compose up -d --build
 ```
 
+> **注意**：`docker-compose.override.yml` 仅用于本地开发测试，包含以下测试数据库容器，服务本身不需要它们。
+> 生产部署时，指定只使用主配置文件以避免启动这些容器：
+>
+> ```bash
+> docker-compose -f docker-compose.yml up -d
+> ```
+>
+> 测试容器账号一览：
+>
+> | 容器 | 端口 | 账号 | 密码 |
+> |------|------|------|------|
+> | mysql-test | 13306 | root | root123 |
+> | mysql-test | 13306 | dbs_admin | Dbs@Admin2026 |
+> | tidb-test | 14000 | root | root123 |
+> | tidb-test | 14000 | dbs_admin | Dbs@Admin2026 |
+> | postgres-test | 15432 | dbs_admin | Dbs@Admin2026 |
+> | redis-test | 16379 | — | 无密码 |
+> | mongo-test | 27117 | dbs_admin | Dbs@Admin2026 |
+
 ---
 
 ### 部署方式二：本地运行
@@ -370,6 +389,25 @@ docker-compose down
 # Rebuild image
 docker-compose up -d --build
 ```
+
+> **Note**: `docker-compose.override.yml` is for local development only. It starts the following test database containers that the application itself does not require.
+> For production, use only the main compose file to avoid starting these containers:
+>
+> ```bash
+> docker-compose -f docker-compose.yml up -d
+> ```
+>
+> Test container credentials:
+>
+> | Container | Port | User | Password |
+> |-----------|------|------|----------|
+> | mysql-test | 13306 | root | root123 |
+> | mysql-test | 13306 | dbs_admin | Dbs@Admin2026 |
+> | tidb-test | 14000 | root | root123 |
+> | tidb-test | 14000 | dbs_admin | Dbs@Admin2026 |
+> | postgres-test | 15432 | dbs_admin | Dbs@Admin2026 |
+> | redis-test | 16379 | — | no password |
+> | mongo-test | 27117 | dbs_admin | Dbs@Admin2026 |
 
 ---
 

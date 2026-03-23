@@ -23,3 +23,39 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: dbs_admin
       MONGO_INITDB_ROOT_PASSWORD: "Dbs@Admin2026"
+
+  mysql-test:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "root123"
+      MYSQL_USER: dbs_admin
+      MYSQL_PASSWORD: "Dbs@Admin2026"
+      MYSQL_DATABASE: testdb
+    ports:
+      - "13306:3306"
+
+  tidb-test:
+    image: pingcap/tidb:v8.1.0
+    restart: unless-stopped
+    ports:
+      - "14000:4000"
+
+  tidb-test-init:
+    image: mysql:8.0
+    depends_on:
+      - tidb-test
+    restart: "no"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        until mysql -h tidb-test -P 4000 -u root --connect-timeout=3 -e 'SELECT 1' >/dev/null 2>&1; do
+          echo 'Waiting for TiDB...'; sleep 2;
+        done
+        mysql -h tidb-test -P 4000 -u root -e "
+          ALTER USER 'root'@'%' IDENTIFIED BY 'root123';
+          CREATE USER IF NOT EXISTS 'dbs_admin'@'%' IDENTIFIED BY 'Dbs@Admin2026';
+          GRANT ALL PRIVILEGES ON *.* TO 'dbs_admin'@'%';
+          FLUSH PRIVILEGES;
+        "
