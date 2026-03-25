@@ -260,6 +260,8 @@ python3 manage.py runserver 0.0.0.0:8000
 ```
 
 访问 `http://localhost:8000`
+默认账号：dbsroot / Dbs@Root2026
+
 
 ### CLI 工具（dbcli）
 
@@ -545,6 +547,7 @@ db.createUser({
 ```bash
 python3 manage.py runserver 0.0.0.0:8000
 ```
+Management Account：dbsroot / Dbs@Root2026
 
 Open `http://localhost:8000`
 
