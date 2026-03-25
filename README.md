@@ -28,6 +28,12 @@
 
 ## 中文说明
 
+[![License](https://img.shields.io/github/license/kisen9102-lgtm/dbquery)](https://github.com/kisen9102-lgtm/dbquery/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/django-4.2-green.svg)](https://www.djangoproject.com/)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-1.3-blue?logo=docker)](https://github.com/kisen9102-lgtm/dbquery/pkgs/container/dbquery)
+[![GitHub stars](https://img.shields.io/github/stars/kisen9102-lgtm/dbquery?style=social)](https://github.com/kisen9102-lgtm/dbquery)
+
 基于 Django 4.2 + Django REST Framework 构建的数据库运维查询平台，支持 MySQL、TiDB 和 PostgreSQL，提供跨实例数据库查询、在线 SQL 编辑器、集群拓扑查询、用户与权限管理等功能，界面支持中文 / 英文切换。
 
 ### 功能概览
@@ -135,7 +141,7 @@ ALLOWED_HOSTS=*
 
 ```bash
 # 修改 docker-compose.yml，将 build: . 替换为：
-# image: ghcr.io/kisen9102-lgtm/dbquery:1.1
+# image: ghcr.io/kisen9102-lgtm/dbquery:1.3
 docker-compose up -d
 ```
 
@@ -319,6 +325,12 @@ python3 -m cli.dbcli instance delete <id>
 
 ## English
 
+[![License](https://img.shields.io/github/license/kisen9102-lgtm/dbquery)](https://github.com/kisen9102-lgtm/dbquery/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
+[![Django](https://img.shields.io/badge/django-4.2-green.svg)](https://www.djangoproject.com/)
+[![Docker Image](https://img.shields.io/badge/ghcr.io-1.3-blue?logo=docker)](https://github.com/kisen9102-lgtm/dbquery/pkgs/container/dbquery)
+[![GitHub stars](https://img.shields.io/github/stars/kisen9102-lgtm/dbquery?style=social)](https://github.com/kisen9102-lgtm/dbquery)
+
 A database operations and query platform built with Django 4.2 + Django REST Framework. Supports MySQL, TiDB, and PostgreSQL with cross-instance database search, an online SQL editor, cluster topology inspection, and user/permission management. The UI supports Chinese / English language switching.
 
 ### Features
@@ -424,7 +436,7 @@ Option A: Pull the pre-built image (recommended, no local build required)
 
 ```bash
 # In docker-compose.yml, replace "build: ." with:
-# image: ghcr.io/kisen9102-lgtm/dbquery:1.1
+# image: ghcr.io/kisen9102-lgtm/dbquery:1.3
 docker-compose up -d
 ```
 
