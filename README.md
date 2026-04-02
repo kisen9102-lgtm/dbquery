@@ -2,21 +2,21 @@
 
 [中文](#中文说明) | [English](#english)
 
-## SQL 查询
+## SQL Query
 <img width="1191" height="525" alt="image" src="https://github.com/user-attachments/assets/696a119b-be2a-40cb-a382-faa185b3d836" />
 
-## redis查询
+## redis Query
 <img width="1192" height="453" alt="image" src="https://github.com/user-attachments/assets/b59df4c5-b3f3-4a93-85e9-2713d1d8e437" />
 <img width="1188" height="367" alt="image" src="https://github.com/user-attachments/assets/59d0d0c3-91f3-4ff0-b0a3-f83f19836da1" />
 
-## mongodb 查询
+## mongodb Query
 <img width="1191" height="410" alt="image" src="https://github.com/user-attachments/assets/c2547111-88ed-49cb-a19c-edbb23e3c4f2" />
 <img width="1185" height="391" alt="image" src="https://github.com/user-attachments/assets/d5ae03a7-498c-4fd0-828e-a806542bcbd4" />
 
-## 实例管理
+## Instance Management
 <img width="1280" height="510" alt="image" src="https://github.com/user-attachments/assets/01ca6578-3c7d-4ab0-80ad-a3fe62be2f62" />
 
-## 用户管理
+## User Management
 <img width="1280" height="514" alt="image" src="https://github.com/user-attachments/assets/241056ab-9b16-4ec9-bb19-723806ce122a" />
 
 
@@ -40,7 +40,6 @@
 | 数据库查询 | 按数据库名或 IP+端口跨实例检索数据库信息 |
 | SQL 查询 | 在线 SQL 编辑器，支持多语句执行、对象浏览器、结果导出 |
 | 实例管理 | 注册 / 编辑 / 删除 MySQL / TiDB / PostgreSQL / Redis / MongoDB 实例（admin / root 可操作） |
-| 集群拓扑查询 | 查询指定节点的主从角色与复制状态 |
 | 用户管理 | 创建 / 编辑用户，支持三种角色（root / admin / query） |
 | 用户组管理 | 管理实例访问权限组，控制 query 用户可见的实例范围 |
 | 多语言 | 界面支持中文 / English 切换，偏好持久化到浏览器本地存储 |
@@ -337,7 +336,6 @@ A database operations and query platform built with Django 4.2 + Django REST Fra
 | DB Search | Search databases by name or IP+port across all registered instances |
 | SQL Query | Online SQL editor with multi-statement execution, object browser, and CSV export |
 | Instance Management | Register / edit / delete MySQL / TiDB / PostgreSQL / Redis / MongoDB instances (admin / root only) |
-| Cluster Topology | Query master/slave role and replication status for any node |
 | User Management | Create / edit users with three roles: root / admin / query |
 | Group Management | Manage instance access groups to control which instances query users can see |
 | i18n | UI language switches between Chinese and English; preference saved in localStorage |
